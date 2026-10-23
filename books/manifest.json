@@ -1,0 +1,54 @@
+[
+  {
+    "id": "dostoevsky-crime",
+    "title": "Преступление и наказание",
+    "author": "Фёдор Достоевский",
+    "year": 1866,
+    "source": {
+      "url": "https://rvb.ru/dostoevski/01text/vol5/27.htm",
+      "label": "Русская виртуальная библиотека · Собрание сочинений в 15 томах"
+    },
+    "file": "crime.json",
+    "wordCount": 169866,
+    "chapterCount": 41
+  },
+  {
+    "id": "dostoevsky-idiot",
+    "title": "Идиот",
+    "author": "Фёдор Достоевский",
+    "year": 1868,
+    "source": {
+      "url": "https://rvb.ru/dostoevski/01text/vol6/28.htm",
+      "label": "Русская виртуальная библиотека · Собрание сочинений в 15 томах"
+    },
+    "file": "idiot.json",
+    "wordCount": 206669,
+    "chapterCount": 50
+  },
+  {
+    "id": "dostoevsky-karamazov",
+    "title": "Братья Карамазовы",
+    "author": "Фёдор Достоевский",
+    "year": 1880,
+    "source": {
+      "url": "https://rvb.ru/dostoevski/01text/vol9/35_1.htm",
+      "label": "Русская виртуальная библиотека · Собрание сочинений в 15 томах"
+    },
+    "file": "karamazov.json",
+    "wordCount": 292778,
+    "chapterCount": 97
+  },
+  {
+    "id": "dostoevsky-white-nights",
+    "title": "Белые ночи",
+    "author": "Фёдор Достоевский",
+    "year": 1848,
+    "source": {
+      "url": "https://rvb.ru/dostoevski/01text/vol2/13.htm",
+      "label": "Русская виртуальная библиотека · Собрание сочинений в 15 томах"
+    },
+    "file": "white-nights.json",
+    "wordCount": 16854,
+    "chapterCount": 6
+  }
+]

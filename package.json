@@ -1,0 +1,9 @@
+{
+  "name": "anchor-reader",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Чтение книг по одному слову с неподвижной центральной буквой",
+  "scripts": {"test": "node --test tests/*.test.mjs", "start": "python3 -m http.server 4173 --bind 127.0.0.1"},
+  "engines": {"node": ">=22"}
+}

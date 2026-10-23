@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f5f0">
+  <meta name="description" content="Якорь — чтение книг по одному слову с неподвижной центральной буквой. EPUB, FB2 и TXT, прямо в браузере.">
+  <title>Якорь — одно слово, всё внимание</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#reader">Перейти к чтению</a>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="Якорь — главная"><span class="brand-mark" aria-hidden="true">я</span>якорь<span class="brand-dot">.</span></a>
+    <nav aria-label="Основное меню"><button class="quiet-button" id="help-button">Как читать</button><button class="icon-button theme-button" id="theme-button" aria-label="Включить тёмную тему" title="Сменить тему"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.5A9 9 0 0 1 9.5 3.5 9 9 0 1 0 20.5 14.5Z"/></svg></button></nav>
+  </header>
+  <main>
+    <section class="intro" aria-labelledby="page-title">
+      <div><p class="eyebrow"><span class="live-dot"></span> ПРОСТРАНСТВО ДЛЯ ЧТЕНИЯ</p><h1 id="page-title">Одно слово. <em>Всё внимание.</em></h1><p class="intro-copy">Смотрите на красную букву. Слова приходят сами.</p></div>
+      <button class="primary-button import-trigger"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m-5 5 5-5 5 5M5 15v5h14v-5"/></svg>Открыть книгу</button>
+    </section>
+
+    <section class="reader-card" id="reader" aria-label="Читалка">
+      <div class="book-toolbar"><div class="book-label"><span class="book-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-2H4zm16 0h-4a3 3 0 0 0-3 3m0 14a4 4 0 0 1 4-2h3V4"/></svg></span><div><h2 id="book-title">Небольшая пауза для внимания</h2><p id="book-meta">Демонстрационный текст</p></div></div><div class="book-tools"><span id="demo-badge" class="badge">ДЕМО</span><button class="icon-button" id="fullscreen-button" aria-label="Полноэкранный режим" title="Полноэкранный режим"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button></div></div>
+      <div class="reading-viewbar"><div class="view-switch" role="group" aria-label="Способ чтения"><button id="word-mode" aria-pressed="true">По слову</button><button id="text-mode" aria-pressed="false">Обычный текст</button></div><div class="font-tools" role="group" aria-label="Размер букв"><button id="font-smaller" aria-label="Уменьшить буквы">A−</button><button id="font-larger" aria-label="Увеличить буквы">A+</button></div></div>
+      <div class="word-stage" id="word-stage">
+        <div class="anchor-guide top" aria-hidden="true"></div>
+        <div class="word-line" id="word-line" aria-label="Текущее слово"><span id="word-prefix"></span><span id="word-anchor"></span><span id="word-suffix"></span></div>
+        <div class="anchor-guide bottom" aria-hidden="true"></div>
+        <p class="stage-hint" id="stage-hint">Одна точка опоры для вашего взгляда</p>
+      </div>
+      <div id="text-mode-panel" class="text-mode-panel" hidden><div id="reading-text"></div><div class="context-navigation"><button class="text-button" id="text-previous">← Предыдущий абзац</button><button class="text-button" id="text-next">Следующий абзац →</button></div></div>
+      <div class="reading-bottom">
+        <div class="progress-labels"><span id="chapter-label">Начало</span><span><strong id="progress-percent">0%</strong><span class="remaining" id="time-remaining"></span></span></div>
+        <input type="range" class="progress-slider" id="progress" min="0" max="1" value="0" step="1" aria-label="Место в книге">
+        <div class="transport-row">
+          <button class="text-button" id="context-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 10h16M4 15h10M4 20h13"/></svg>Абзац</button>
+          <div class="transport"><button class="icon-button rewind-button" id="rewind-button" aria-label="Назад на 10 слов" title="Назад на 10 слов"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8a8 8 0 1 1-1 8M5 3v5h5"/></svg><span>10</span></button><button class="icon-button" id="previous-button" aria-label="Предыдущее слово" title="Предыдущее слово"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button><button class="play-button" id="play-button" aria-label="Начать чтение"><svg id="play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7Z"/></svg><span id="play-label">Читать</span></button><button class="icon-button" id="next-button" aria-label="Следующее слово" title="Следующее слово"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button></div>
+          <span class="keyboard-hint"><kbd>пробел</kbd> начать / пауза</span>
+        </div>
+      </div>
+      <div class="reader-settings"><div class="speed-control"><div class="setting-heading"><label for="speed">Темп чтения</label><span><strong id="speed-value">300</strong> слов/мин</span></div><div class="speed-range"><span>100</span><input id="speed" type="range" min="100" max="1200" step="25" value="300" aria-label="Скорость чтения, слов в минуту"><span>1200</span></div></div><div class="settings-divider"></div><label class="smart-control"><span><strong>Умные паузы</strong><small>Чуть больше времени на смысл</small></span><input id="smart" type="checkbox" checked><span class="switch" aria-hidden="true"></span></label></div>
+      <div class="reading-extras"><div class="speed-presets" role="group" aria-label="Быстрый выбор скорости"><button data-speed="200">200</button><button data-speed="300">300</button><button data-speed="450">450</button><button data-speed="600">600</button></div><button class="text-button" id="calibration-button">Подобрать темп ↗</button><button class="text-button" id="sentence-button">↶ К началу фразы</button></div>
+      <div class="reading-options"><span id="effective-speed"></span><label><input type="checkbox" id="paragraph-pause"> Пауза после абзаца</label></div>
+      <div class="chapter-row" id="chapter-row" hidden><label for="chapter-select">Глава</label><select id="chapter-select" aria-label="Перейти к главе"></select></div>
+    </section>
+
+    <section class="classics-section" aria-labelledby="classics-heading"><div class="section-heading"><div><p class="eyebrow">БИБЛИОТЕКА КЛАССИКИ</p><h2 id="classics-heading">Вечер с Достоевским</h2></div><span class="section-note">4 книги · полные тексты на русском</span></div><div id="classics-list" class="classics-list" aria-live="polite"><p class="catalog-loading">Загружаем полку…</p></div></section>
+
+    <section class="library-section" aria-labelledby="library-heading"><div class="section-heading"><div><p class="eyebrow">ВАШИ ТЕКСТЫ</p><h2 id="library-heading">На вашей полке</h2></div><button class="text-button" id="paste-button">Вставить текст <span aria-hidden="true">↗</span></button></div><div id="library-list" class="library-list"></div><div class="library-empty" id="library-empty"><div class="empty-lines" aria-hidden="true"><i></i><i></i><i></i></div><div><h3>Следующая история — ваша</h3><p>Добавьте EPUB, FB2 или TXT. Мы запомним, где вы остановились.</p></div><button class="outline-button import-trigger">Добавить книгу <span aria-hidden="true">+</span></button></div></section>
+    <footer><span><span class="privacy-dot" aria-hidden="true"></span> Ваши книги остаются в этом браузере</span><a href="./research.html" target="_blank" rel="noopener">Что говорят исследования ↗</a></footer>
+  </main>
+
+  <dialog id="import-dialog" aria-labelledby="import-title"><div class="dialog-top"><h2 id="import-title">Что будем читать?</h2><button class="icon-button close-dialog" aria-label="Закрыть">×</button></div><p class="dialog-description">Откройте книгу с устройства или вставьте любой текст.</p><div class="drop-zone" id="drop-zone"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m-5 5 5-5 5 5M4 15v6h16v-6"/></svg><strong>Перетащите книгу сюда</strong><span>EPUB, FB2, TXT · до 30 МБ</span><button class="outline-button" id="choose-file-button">Выбрать файл</button></div><input id="file-input" type="file" accept=".epub,.fb2,.txt" hidden><label class="encoding-label" for="encoding">Кодировка TXT<select id="encoding"><option value="utf-8">UTF-8</option><option value="windows-1251">Windows-1251</option></select></label><div class="or-divider"><span>или свой текст</span></div><label class="field-label" for="text-title">Название</label><input class="text-input" id="text-title" placeholder="Мой текст" maxlength="200"><label class="field-label" for="text-input">Текст для чтения</label><textarea id="text-input" placeholder="Вставьте текст здесь…" rows="5"></textarea><p class="inline-error" id="import-error" role="alert"></p><button class="primary-button full-width" id="read-text-button">Добавить и читать</button></dialog>
+  <dialog id="context-dialog" aria-labelledby="context-title"><div class="dialog-top"><h2 id="context-title">Сейчас в книге</h2><button class="icon-button close-dialog" aria-label="Закрыть">×</button></div><p class="dialog-description">Перечитайте мысль. Выберите слово, затем нажмите «Продолжить».</p><div class="context-navigation"><button class="text-button" id="context-previous">← Назад</button><span id="context-count"></span><button class="text-button" id="context-next">Далее →</button></div><div class="context-paragraph" id="context-paragraph"></div><button class="primary-button full-width" id="continue-button">Продолжить чтение</button></dialog>
+  <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-top"><h2 id="help-title">Найдите свою точку опоры</h2><button class="icon-button close-dialog" aria-label="Закрыть">×</button></div><ol class="help-steps"><li><strong>Смотрите на красную букву.</strong><p>Она всегда в центре. Взгляду не нужно перемещаться вдоль строки.</p></li><li><strong>Выберите свой темп.</strong><p>Начните с 300 слов в минуту. Умные паузы дают больше времени после знаков препинания и на длинных словах.</p></li><li><strong>Возвращайтесь, когда нужно.</strong><p>Пробел — пауза, стрелки — соседние слова. Кнопка «Абзац» поможет восстановить контекст.</p></li></ol><button class="primary-button full-width" id="demo-button">Попробовать на коротком тексте</button></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <noscript><p>Для чтения книг включите JavaScript в браузере.</p></noscript>
+  <script type="module" src="./js/app.mjs"></script>
+</body>
+</html>
