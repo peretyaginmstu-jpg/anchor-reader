@@ -50,5 +50,161 @@
     "file": "white-nights.json",
     "wordCount": 16854,
     "chapterCount": 6
+  },
+  {
+    "id": "tolstoy-ivan-ilyich",
+    "title": "Смерть Ивана Ильича",
+    "author": "Лев Толстой",
+    "year": 1886,
+    "source": {
+      "url": "https://rvb.ru/tolstoy/01text/vol_12/01text/0280-full.htm",
+      "label": "Русская виртуальная библиотека · Собрание сочинений в 22 томах, том 12"
+    },
+    "file": "tolstoy-ivan-ilyich.json",
+    "chapterCount": 12,
+    "wordCount": 17366
+  },
+  {
+    "id": "tolstoy-after-the-ball",
+    "title": "После бала",
+    "author": "Лев Толстой",
+    "year": 1911,
+    "source": {
+      "url": "https://rvb.ru/tolstoy/01text/vol_14/01text/0299.htm",
+      "label": "Русская виртуальная библиотека · Собрание сочинений в 22 томах, том 14"
+    },
+    "file": "tolstoy-after-the-ball.json",
+    "chapterCount": 1,
+    "wordCount": 3093
+  },
+  {
+    "id": "tolstoy-hadji-murat",
+    "title": "Хаджи-Мурат",
+    "author": "Лев Толстой",
+    "year": 1912,
+    "source": {
+      "url": "https://rvb.ru/tolstoy/01text/vol_14/01text/0301.htm",
+      "label": "Русская виртуальная библиотека · Собрание сочинений в 22 томах, том 14"
+    },
+    "file": "tolstoy-hadji-murat.json",
+    "chapterCount": 26,
+    "wordCount": 34761
+  },
+  {
+    "id": "chekhov-ward-six",
+    "title": "Палата № 6",
+    "author": "Антон Чехов",
+    "year": 1892,
+    "source": {
+      "url": "https://ru.wikisource.org/wiki/Палата_№_6_(Чехов)",
+      "label": "Викитека · Полное собрание сочинений и писем в 30 томах, том 8"
+    },
+    "file": "chekhov-ward-six.json",
+    "chapterCount": 19,
+    "wordCount": 16075
+  },
+  {
+    "id": "chekhov-lady-with-the-dog",
+    "title": "Дама с собачкой",
+    "author": "Антон Чехов",
+    "year": 1899,
+    "source": {
+      "url": "https://ru.wikisource.org/wiki/Дама_с_собачкой_(Чехов)",
+      "label": "Викитека · Полное собрание сочинений и писем в 30 томах, том 10"
+    },
+    "file": "chekhov-lady-with-the-dog.json",
+    "chapterCount": 4,
+    "wordCount": 5109
+  },
+  {
+    "id": "chekhov-man-in-a-case",
+    "title": "Человек в футляре",
+    "author": "Антон Чехов",
+    "year": 1898,
+    "source": {
+      "url": "https://ru.wikisource.org/wiki/Человек_в_футляре_(Чехов)",
+      "label": "Викитека · Полное собрание сочинений и писем в 30 томах, том 10"
+    },
+    "file": "chekhov-man-in-a-case.json",
+    "chapterCount": 1,
+    "wordCount": 4007
+  },
+  {
+    "id": "pushkin-captain-daughter",
+    "title": "Капитанская дочка",
+    "author": "Александр Пушкин",
+    "year": 1836,
+    "source": {
+      "url": "https://rvb.ru/pushkin/01text/06prose/01prose/0869-full.htm",
+      "label": "Русская виртуальная библиотека · Собрание сочинений в 10 томах"
+    },
+    "file": "pushkin-captain-daughter.json",
+    "wordCount": 29670,
+    "chapterCount": 14
+  },
+  {
+    "id": "pushkin-queen-spades",
+    "title": "Пиковая дама",
+    "author": "Александр Пушкин",
+    "year": 1834,
+    "source": {
+      "url": "https://rvb.ru/pushkin/01text/06prose/01prose/0866-full.htm",
+      "label": "Русская виртуальная библиотека · Собрание сочинений в 10 томах"
+    },
+    "file": "pushkin-queen-spades.json",
+    "wordCount": 6944,
+    "chapterCount": 7
+  },
+  {
+    "id": "pushkin-stationmaster",
+    "title": "Станционный смотритель",
+    "author": "Александр Пушкин",
+    "year": 1831,
+    "source": {
+      "url": "https://rvb.ru/pushkin/01text/06prose/01prose/0861.htm",
+      "label": "Русская виртуальная библиотека · Собрание сочинений в 10 томах"
+    },
+    "file": "pushkin-stationmaster.json",
+    "wordCount": 3444,
+    "chapterCount": 1
+  },
+  {
+    "id": "gogol-overcoat",
+    "title": "Шинель",
+    "author": "Николай Гоголь",
+    "year": 1842,
+    "source": {
+      "url": "https://rvb.ru/gogol/01text/vol_03/01povesti/0046.htm",
+      "label": "Русская виртуальная библиотека · Полное собрание сочинений в 14 томах"
+    },
+    "file": "gogol-overcoat.json",
+    "wordCount": 9990,
+    "chapterCount": 1
+  },
+  {
+    "id": "gogol-nose",
+    "title": "Нос",
+    "author": "Николай Гоголь",
+    "year": 1836,
+    "source": {
+      "url": "https://rvb.ru/gogol/01text/vol_03/01povesti/0044.htm",
+      "label": "Русская виртуальная библиотека · Полное собрание сочинений в 14 томах"
+    },
+    "file": "gogol-nose.json",
+    "wordCount": 7656,
+    "chapterCount": 3
+  },
+  {
+    "id": "gogol-christmas-eve",
+    "title": "Ночь перед Рождеством",
+    "author": "Николай Гоголь",
+    "year": 1832,
+    "source": {
+      "url": "https://rvb.ru/gogol/01text/vol_01/02_vechera/0008.htm",
+      "label": "Русская виртуальная библиотека · Полное собрание сочинений в 14 томах"
+    },
+    "file": "gogol-christmas-eve.json",
+    "wordCount": 13297,
+    "chapterCount": 2
   }
 ]

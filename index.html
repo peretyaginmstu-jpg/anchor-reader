@@ -2,18 +2,19 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f7f5f0">
   <meta name="description" content="Якорь — чтение книг по одному слову с неподвижной центральной буквой. EPUB, FB2 и TXT, прямо в браузере.">
   <title>Якорь — одно слово, всё внимание</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./focus.css">
 </head>
 <body>
   <a class="skip-link" href="#reader">Перейти к чтению</a>
   <header class="site-header">
     <a class="brand" href="./" aria-label="Якорь — главная"><span class="brand-mark" aria-hidden="true">я</span>якорь<span class="brand-dot">.</span></a>
-    <nav aria-label="Основное меню"><button class="quiet-button" id="help-button">Как читать</button><button class="icon-button theme-button" id="theme-button" aria-label="Включить тёмную тему" title="Сменить тему"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.5A9 9 0 0 1 9.5 3.5 9 9 0 1 0 20.5 14.5Z"/></svg></button></nav>
+    <nav aria-label="Основное меню"><a class="quiet-button" href="#finder-heading">Библиотека</a><button class="quiet-button" id="help-button">Как читать</button><button class="icon-button theme-button" id="theme-button" aria-label="Включить тёмную тему" title="Сменить тему"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.5A9 9 0 0 1 9.5 3.5 9 9 0 1 0 20.5 14.5Z"/></svg></button></nav>
   </header>
   <main>
     <section class="intro" aria-labelledby="page-title">
@@ -46,9 +47,18 @@
       <div class="chapter-row" id="chapter-row" hidden><label for="chapter-select">Глава</label><select id="chapter-select" aria-label="Перейти к главе"></select></div>
     </section>
 
-    <section class="classics-section" aria-labelledby="classics-heading"><div class="section-heading"><div><p class="eyebrow">БИБЛИОТЕКА КЛАССИКИ</p><h2 id="classics-heading">Вечер с Достоевским</h2></div><span class="section-note">4 книги · полные тексты на русском</span></div><div id="classics-list" class="classics-list" aria-live="polite"><p class="catalog-loading">Загружаем полку…</p></div></section>
+    <section class="book-finder" aria-labelledby="finder-heading">
+      <div class="section-heading"><div><p class="eyebrow">БИБЛИОТЕКА</p><h2 id="finder-heading">Найдите свою историю</h2></div><span class="section-note">Классика и ваши книги — рядом</span></div>
+      <div class="library-filters" role="search" aria-label="Поиск по библиотеке">
+        <div class="search-field"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><label class="sr-only" for="library-search">Название или автор</label><input id="library-search" type="search" placeholder="Название или автор…" autocomplete="off" enterkeyhint="search" aria-controls="classics-list library-list"><button id="clear-search" class="icon-button" aria-label="Очистить поиск" hidden>×</button></div>
+        <label class="filter-select"><span>Автор</span><select id="author-filter"><option value="">Все авторы</option></select></label>
+        <label class="filter-select"><span>Порядок</span><select id="book-sort"><option value="shelf">Как на полке</option><option value="title">По названию</option><option value="short">Сначала короткие</option></select></label>
+      </div>
+      <div class="search-summary"><p id="search-results" role="status" aria-live="polite" aria-atomic="true">Ищите по названию и автору во всей библиотеке</p><button id="reset-filters" class="text-button" hidden>Сбросить фильтры</button></div>
+    </section>
+    <section class="classics-section" aria-labelledby="classics-heading"><div class="section-heading"><h2 id="classics-heading">Русская классика</h2><span class="section-note" id="classics-count">Полные тексты на русском</span></div><div id="classics-list" class="classics-list"><p class="catalog-loading">Загружаем полку…</p></div><p id="classics-empty" class="search-empty" hidden>На этой полке ничего не найдено. Попробуйте другое название или выберите всех авторов.</p></section>
 
-    <section class="library-section" aria-labelledby="library-heading"><div class="section-heading"><div><p class="eyebrow">ВАШИ ТЕКСТЫ</p><h2 id="library-heading">На вашей полке</h2></div><button class="text-button" id="paste-button">Вставить текст <span aria-hidden="true">↗</span></button></div><div id="library-list" class="library-list"></div><div class="library-empty" id="library-empty"><div class="empty-lines" aria-hidden="true"><i></i><i></i><i></i></div><div><h3>Следующая история — ваша</h3><p>Добавьте EPUB, FB2 или TXT. Мы запомним, где вы остановились.</p></div><button class="outline-button import-trigger">Добавить книгу <span aria-hidden="true">+</span></button></div></section>
+    <section class="library-section" aria-labelledby="library-heading"><div class="section-heading"><div><p class="eyebrow">СОХРАНЕНО В БРАУЗЕРЕ</p><h2 id="library-heading">На вашей полке</h2></div><button class="text-button" id="paste-button">Вставить текст <span aria-hidden="true">↗</span></button></div><div id="library-list" class="library-list"></div><p id="library-search-empty" class="search-empty" hidden>Среди сохранённых книг совпадений нет.</p><div class="library-empty" id="library-empty"><div class="empty-lines" aria-hidden="true"><i></i><i></i><i></i></div><div><h3>Следующая история — ваша</h3><p>Добавьте EPUB, FB2 или TXT. Мы запомним, где вы остановились.</p></div><button class="outline-button import-trigger">Добавить книгу <span aria-hidden="true">+</span></button></div></section>
     <footer><span><span class="privacy-dot" aria-hidden="true"></span> Ваши книги остаются в этом браузере</span><a href="./research.html" target="_blank" rel="noopener">Что говорят исследования ↗</a></footer>
   </main>
 

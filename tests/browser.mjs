@@ -1,5 +1,6 @@
 import { runImporterTests } from './importers.browser.mjs';
 import { runStorageTests } from './storage.browser.mjs';
+import { runFocusTests } from './focus.browser.mjs';
 import * as storage from '../js/storage.mjs';
 
 const output = document.querySelector('#results');
@@ -21,6 +22,7 @@ document.querySelector('#run').addEventListener('click', async () => {
   let frame;
   let savedSettings;
   const originalIds = new Set();
+  const openedClassics = new Set(['dostoevsky-white-nights']);
   try {
     output.textContent = 'Проверка импорта…';
     for (const [name, run] of [['importers', runImporterTests], ['storage', runStorageTests]]) {
@@ -49,6 +51,28 @@ document.querySelector('#run').addEventListener('click', async () => {
       assert(el('word-anchor').textContent === 'и', 'книга middle letter must be и');
       assert((await storage.listBooks()).some(b => b.title === 'QA — временная книга'), 'Book not persisted');
     });
+    await record('Library search combines title and author, ё/е, filters and reset', async () => {
+      await until(() => d.querySelector('[data-book-id="dostoevsky-white-nights"]'), 'catalogue');
+      await until(() => [...d.querySelectorAll('.library-open strong')].some(title => title.textContent === 'QA — временная книга'), 'saved library metadata');
+      const total = d.querySelectorAll('.classic-cover').length;
+      input('library-search', 'ФЕДОР ночи');
+      assert(d.querySelectorAll('.classic-cover').length === 1, 'Case-insensitive multi-term search failed');
+      assert(d.querySelector('.cover-title').textContent === 'Белые ночи', 'Wrong book found');
+      input('author-filter', 'Фёдор Достоевский', 'change');
+      input('library-search', 'КНИГА КОТОРОЙ НЕТ');
+      assert(!el('classics-empty').hidden && !d.querySelector('.classic-cover'), 'Missing empty result state');
+      el('reset-filters').click();
+      assert(d.querySelectorAll('.classic-cover').length === total, 'Reset lost books');
+      assert(d.activeElement === el('library-search'), 'Reset must return focus to search');
+      input('library-search', 'QA временная');
+      assert(d.querySelectorAll('.library-book').length === 1, 'Imported book is not searchable');
+      assert(d.querySelector('.library-open strong').textContent === 'QA — временная книга', 'Wrong local book found');
+      const index = el('progress').value;
+      el('library-search').dispatchEvent(new w.KeyboardEvent('keydown', { key:'ArrowRight', bubbles:true }));
+      assert(el('progress').value === index, 'Search arrow key moved reading position');
+      el('clear-search').click();
+      assert(el('library-search').value === '' && d.querySelectorAll('.classic-cover').length === total, 'Clear search failed');
+    });
     for (const width of [1440, 390, 320]) {
       await record(`Anchor center and long-word fit at ${width}px`, async () => {
         frame.width = String(width);
@@ -66,6 +90,7 @@ document.querySelector('#run').addEventListener('click', async () => {
         assert(d.documentElement.scrollWidth <= width, 'Page horizontally overflows');
       });
     }
+    await runFocusTests({ frame, record });
     await record('Keyboard works after clicking reader controls', async () => {
       input('progress', '0');
       el('next-button').click();
@@ -206,7 +231,7 @@ document.querySelector('#run').addEventListener('click', async () => {
       assert(el('progress').value === before, 'Trial changed book position');
     });
     await record('Dostoevsky shelf opens a complete Russian book with chapters', async () => {
-      await until(() => d.querySelectorAll('.classic-cover').length === 4, 'classics shelf');
+      await until(() => d.querySelector('[data-book-id="dostoevsky-white-nights"]'), 'classics shelf');
       const cover = d.querySelector('[data-book-id="dostoevsky-white-nights"]');
       cover.click();
       await until(() => el('book-title').textContent === 'Белые ночи', 'White nights load', 20000);
@@ -218,11 +243,42 @@ document.querySelector('#run').addEventListener('click', async () => {
       await delay(150);
       el('play-button').click();
     });
+    const catalogue = await (await fetch('../books/manifest.json')).json();
+    await record('Catalogue filters all five authors and sorts by length', async () => {
+      for (const author of ['Лев Толстой', 'Антон Чехов', 'Александр Пушкин', 'Николай Гоголь', 'Фёдор Достоевский']) {
+        input('author-filter', author, 'change');
+        assert(el('author-filter').value === author, `Missing author ${author}`);
+        assert(d.querySelectorAll('.classic-cover').length === catalogue.filter(book => book.author === author).length, `Wrong count for ${author}`);
+      }
+      el('reset-filters').click();
+      input('book-sort', 'short', 'change');
+      const ids = [...d.querySelectorAll('.classic-cover')].map(cover => cover.dataset.bookId);
+      const counts = ids.map(id => catalogue.find(book => book.id === id).wordCount);
+      assert(counts.every((value, index) => index === 0 || value >= counts[index-1]), 'Short books not sorted first');
+      el('reset-filters').click();
+    });
+    for (const author of ['Лев Толстой', 'Антон Чехов', 'Александр Пушкин', 'Николай Гоголь']) {
+      await record(`${author}: open, navigate and resume a complete built-in book`, async () => {
+        const book = catalogue.find(book => book.author === author);
+        assert(Boolean(book), `No book for ${author}`);
+        openedClassics.add(book.id);
+        d.querySelector(`[data-book-id="${book.id}"]`).click();
+        await until(() => el('book-title').textContent === book.title, 'classic book opening', 20000);
+        assert(Number(el('progress').max) === book.wordCount - 1, 'Word count differs from catalogue');
+        assert(el('chapter-select').options.length === book.chapterCount, 'Chapter count differs');
+        input('progress', String(Math.min(50, book.wordCount - 1)));
+        const before = Number(el('progress').value);
+        el('play-button').click();
+        await delay(160);
+        el('play-button').click();
+        assert(Number(el('progress').value) > before, 'Playback did not advance');
+      });
+    }
   } catch (error) { report.failed++; report.integration.push({ name:'Runner', ok:false, error:error.stack }); }
   finally {
     frame?.remove();
     if (savedSettings) {
-      for (const book of await storage.listBooks()) if (!originalIds.has(book.id) && (book.title === 'QA — временная книга' || book.id === 'dostoevsky-white-nights')) await storage.deleteBook(book.id);
+      for (const book of await storage.listBooks()) if (!originalIds.has(book.id) && (book.title === 'QA — временная книга' || openedClassics.has(book.id))) await storage.deleteBook(book.id);
       await storage.saveSettings(savedSettings);
     }
     output.textContent = JSON.stringify(report, null, 2);

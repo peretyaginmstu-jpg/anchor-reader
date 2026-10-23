@@ -2,6 +2,8 @@ import { ReadingEngine, tokenizeChapters, remainingMs } from './reader.mjs';
 import { importBook, bookFromText } from './importers.mjs';
 import * as library from './storage.mjs';
 import { setupCalibration } from './calibration.mjs';
+import { selectBooks, listAuthors, bookCount } from './library-search.mjs';
+import { setupFocusReader } from './focus.mjs';
 
 const $ = (id) => document.getElementById(id);
 const demo = bookFromText(`Внимание — это маленькое путешествие. Обычно взгляд спешит по строкам, перескакивает вперёд и возвращается назад. Здесь всё устроено иначе. Слова появляются по одному, а красная буква остаётся на месте. Просто удерживайте взгляд рядом с ней.
@@ -32,6 +34,11 @@ let viewMode = 'word';
 let contextParagraphIndex = 0;
 let pausedAtParagraph = false;
 let catalogue = [];
+let catalogueLoaded = false;
+let savedBooks = [];
+let authorSignature = '';
+let focusReader;
+const searchState = { query: '', author: '', sort: 'shelf' };
 const measureCanvas = document.createElement('canvas');
 const measure = measureCanvas.getContext('2d');
 const engine = new ReadingEngine({ tokens: doc.tokens, onUpdate: () => {
@@ -43,6 +50,12 @@ const engine = new ReadingEngine({ tokens: doc.tokens, onUpdate: () => {
   render();
 } });
 const calibration = setupCalibration({ getWpm: () => engine.wpm, getSmart: () => engine.smart, onApply: setSpeed, pauseMain: () => engine.pause() });
+focusReader = setupFocusReader({
+  readState: () => ({ wpm: engine.wpm, title: currentBook.title }),
+  onSpeedChange: setSpeed,
+  onEnter: () => setViewMode('word'),
+  onChange: fitWord,
+});
 
 function notify(message, duration = 5500) {
   clearTimeout(toastTimer);
@@ -98,7 +111,7 @@ function fitWord() {
   if (!token) return;
   const line = $('word-line');
   const fullscreen = Boolean(document.fullscreenElement) || $('reader').classList.contains('focus-mode');
-  const base = (fullscreen ? (window.innerWidth <= 600 ? 58 : 90) : window.innerWidth <= 600 ? 48 : window.innerWidth <= 850 ? 60 : 68) * (settings.fontScale || 1);
+  const base = Math.min(focusReader?.maxFontSize ?? Infinity, (fullscreen ? (window.innerWidth <= 600 ? 58 : 90) : window.innerWidth <= 600 ? 48 : window.innerWidth <= 850 ? 60 : 68) * (settings.fontScale || 1));
   measure.font = `${base}px Georgia, "Times New Roman", serif`;
   measure.fontKerning = 'none';
   const width = line.getBoundingClientRect().width;
@@ -138,6 +151,7 @@ function render() {
   $('effective-speed').textContent = engine.smart ? `С учётом пауз: ~${average} слов/мин${settings.pauseAfterParagraph ? ' + ваши остановки' : ''}` : `Равномерный темп: ${engine.wpm} слов/мин`;
   document.querySelectorAll('[data-speed]').forEach(button => { button.classList.toggle('active', Number(button.dataset.speed) === engine.wpm); button.setAttribute('aria-pressed', String(Number(button.dataset.speed) === engine.wpm)); });
   if (viewMode === 'text') renderTextPanel();
+  focusReader?.sync();
   if (ready) queuePosition();
   if (previousPlaying && !engine.playing) refreshLibrary();
   previousPlaying = engine.playing;
@@ -176,7 +190,20 @@ async function refreshLibrary() {
   try {
     const books = await library.listBooks();
     if (version !== libraryVersion) return;
-    $('library-empty').hidden = books.length > 0;
+    savedBooks = books;
+    const previousAuthor = searchState.author;
+    refreshAuthors();
+    if (previousAuthor !== searchState.author) renderCatalogue();
+    renderSavedLibrary();
+    updateSearchSummary();
+  } catch (error) { storageFailed(error); }
+}
+
+function renderSavedLibrary() {
+    const books = selectBooks(savedBooks, searchState);
+    const filtering = Boolean(searchState.query.trim() || searchState.author);
+    $('library-empty').hidden = savedBooks.length > 0 || filtering;
+    $('library-search-empty').hidden = books.length > 0 || (!savedBooks.length && !filtering);
     $('library-list').replaceChildren(...books.map((book) => {
       const article = document.createElement('article');
       article.className = `library-book${book.id === currentBook.id ? ' active' : ''}`;
@@ -219,7 +246,6 @@ async function refreshLibrary() {
       article.append(icon, open, remove);
       return article;
     }));
-  } catch (error) { storageFailed(error); }
 }
 
 function openDialog(id) {
@@ -342,26 +368,78 @@ async function loadCatalogue() {
     const response = await fetch('./books/manifest.json');
     if (!response.ok) throw new Error('Не удалось загрузить полку классики.');
     catalogue = await response.json();
-    $('classics-list').replaceChildren(...catalogue.map(book => {
+    catalogueLoaded = true;
+    refreshAuthors();
+    renderCatalogue();
+    updateSearchSummary();
+  } catch (error) {
+    const message = document.createElement('p'); message.className = 'catalog-loading'; message.textContent = error.message;
+    const retry = document.createElement('button'); retry.className = 'text-button'; retry.textContent = 'Повторить'; retry.addEventListener('click', loadCatalogue);
+    $('classics-list').replaceChildren(message, retry);
+    $('search-results').textContent = 'Поиск по вашим книгам доступен. Полку классики можно загрузить повторно.';
+  }
+}
+
+function renderCatalogue() {
+    if (!catalogueLoaded) return;
+    const books = selectBooks(catalogue, searchState);
+    $('classics-count').textContent = `${bookCount(catalogue.length)} · полные тексты на русском`;
+    $('classics-empty').hidden = books.length > 0;
+    $('classics-list').replaceChildren(...books.map(book => {
       const card = document.createElement('article'); card.className = 'classic-card';
       const cover = document.createElement('button'); cover.className = 'classic-cover'; cover.dataset.bookId = book.id;
+      cover.dataset.author = book.id.split('-')[0];
       cover.setAttribute('aria-label', `Читать «${book.title}»`);
-      for (const [className, text] of [['cover-author', 'Фёдор\nДостоевский'], ['cover-title', book.title], ['cover-year', String(book.year)], ['cover-open', '↗']]) {
+      for (const [className, text] of [['cover-author', book.author.replace(/ (\S+)$/u, '\n$1')], ['cover-title', book.title], ['cover-year', String(book.year)], ['cover-open', '↗']]) {
         const span = document.createElement('span'); span.className = className; span.textContent = text; cover.append(span);
       }
       const meta = document.createElement('div'); meta.className = 'classic-meta';
-      const length = document.createElement('span'); length.textContent = `${Math.round(book.wordCount / 1000)} тыс. слов`;
+      const length = document.createElement('span'); length.textContent = book.wordCount >= 10000 ? `${Math.round(book.wordCount / 1000)} тыс. слов` : `${book.wordCount.toLocaleString('ru-RU')} слов`;
       const source = document.createElement('a'); source.textContent = 'Источник ↗'; source.href = book.source.url; source.target = '_blank'; source.rel = 'noopener';
       meta.append(length, source); card.append(cover, meta);
       cover.addEventListener('click', () => openClassic(book, cover));
       return card;
     }));
-  } catch (error) {
-    const message = document.createElement('p'); message.className = 'catalog-loading'; message.textContent = error.message;
-    const retry = document.createElement('button'); retry.className = 'text-button'; retry.textContent = 'Повторить'; retry.addEventListener('click', loadCatalogue);
-    $('classics-list').replaceChildren(message, retry);
-  }
 }
+
+function refreshAuthors() {
+  const authors = listAuthors([...catalogue, ...savedBooks]);
+  const signature = JSON.stringify(authors);
+  if (signature === authorSignature) return;
+  authorSignature = signature;
+  $('author-filter').replaceChildren(...['', ...authors].map(author => {
+    const option = document.createElement('option');
+    option.value = author;
+    option.textContent = author || 'Все авторы';
+    return option;
+  }));
+  if (!authors.includes(searchState.author)) searchState.author = '';
+  $('author-filter').value = searchState.author;
+}
+
+function updateSearchSummary() {
+  const classics = selectBooks(catalogue, searchState).length;
+  const saved = selectBooks(savedBooks, searchState).length;
+  const filtering = Boolean(searchState.query.trim() || searchState.author);
+  $('search-results').textContent = filtering ? `Классика: ${bookCount(classics)} · На вашей полке: ${bookCount(saved)}` : 'Ищите по названию и автору во всей библиотеке';
+  $('clear-search').hidden = !searchState.query;
+  $('reset-filters').hidden = !filtering && searchState.sort === 'shelf';
+}
+
+function applySearch() {
+  searchState.query = $('library-search').value;
+  searchState.author = $('author-filter').value;
+  searchState.sort = $('book-sort').value;
+  renderCatalogue();
+  renderSavedLibrary();
+  updateSearchSummary();
+}
+
+$('library-search').addEventListener('input', applySearch);
+$('author-filter').addEventListener('change', applySearch);
+$('book-sort').addEventListener('change', applySearch);
+$('clear-search').addEventListener('click', () => { $('library-search').value = ''; applySearch(); $('library-search').focus(); });
+$('reset-filters').addEventListener('click', () => { $('library-search').value = ''; $('author-filter').value = ''; $('book-sort').value = 'shelf'; applySearch(); $('library-search').focus(); });
 
 async function openClassic(entry, button) {
   const generation = ++importGeneration;
@@ -455,19 +533,7 @@ document.querySelectorAll('dialog').forEach((dialog) => dialog.addEventListener(
   if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
 }));
 
-$('fullscreen-button').addEventListener('click', async () => {
-  const reader = $('reader');
-  try {
-    if (document.fullscreenElement) await document.exitFullscreen();
-    else if (reader.classList.contains('focus-mode')) reader.classList.remove('focus-mode');
-    else if (reader.requestFullscreen && document.fullscreenEnabled) await reader.requestFullscreen();
-    else reader.classList.add('focus-mode');
-  } catch { reader.classList.toggle('focus-mode'); }
-  fitWord();
-});
-document.addEventListener('fullscreenchange', fitWord);
 document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && $('reader').classList.contains('focus-mode')) { $('reader').classList.remove('focus-mode'); fitWord(); return; }
   if (document.querySelector('dialog[open]') || event.target.closest('input,textarea,select,[contenteditable="true"]') || event.ctrlKey || event.metaKey || event.altKey) return;
   if (event.target.closest('button,a') && !event.target.closest('#reader')) return;
   if (event.code === 'Space') {

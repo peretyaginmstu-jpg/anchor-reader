@@ -1,1 +1,19 @@
-<!doctype html><html lang="ru"><meta charset="utf-8"><title>Якорь — мобильный макет</title><style>body{margin:0;background:#e5e6df}iframe{display:block;border:0;background:#f7f5f0}</style><iframe title="Мобильная версия Якоря" width="390" height="844" src="../"></iframe><script>const p=new URLSearchParams(location.search),f=document.querySelector('iframe');f.width=Number(p.get('width'))||390;f.height=Number(p.get('height'))||844;</script></html>
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<title>Якорь — мобильный макет</title>
+<style>
+body{margin:0;padding:16px;background:#e5e6df;font:12px system-ui;color:#535b50;display:grid;justify-content:center;gap:12px}p{margin:0;text-align:center}iframe{display:block;border:0;background:#f7f5f0;box-shadow:0 4px 24px #0001;border-radius:8px}
+</style>
+<p id="viewport-label"></p>
+<iframe title="Мобильная версия Якоря" width="390" height="844" src="../"></iframe>
+<script>
+const p=new URLSearchParams(location.search),f=document.querySelector('iframe');
+f.width=Number(p.get('width'))||390;f.height=Number(p.get('height'))||844;
+document.getElementById('viewport-label').textContent=`Мобильная вёрстка · ${f.width} × ${f.height}`;
+// A development-only preview of browsers without element fullscreen.
+if(p.get('fallback')==='1') f.addEventListener('load',()=>{
+  f.contentDocument.getElementById('reader').requestFullscreen=async()=>{throw new Error('Preview: fullscreen unavailable');};
+});
+</script>
+</html>

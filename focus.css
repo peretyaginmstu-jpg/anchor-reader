@@ -1,0 +1,79 @@
+/* Compact viewport mode, loaded after the ordinary reader styles. */
+.focus-header,.focus-speedbar{display:none}
+.reader-card.focus-reader{
+  --focus-side:max(16px,env(safe-area-inset-left,0px),env(safe-area-inset-right,0px));
+  position:fixed;inset:auto;left:var(--focus-left,0px);top:var(--focus-top,0px);
+  width:var(--focus-width,100vw);height:var(--focus-height,100dvh);max-width:none;max-height:none;
+  margin:0;padding:0;border:0;border-radius:0;background:var(--surface);color:var(--text);
+  display:block;overflow:hidden;overscroll-behavior:none;z-index:1000;
+}
+.reader-card.focus-reader::backdrop{background:var(--surface)}
+.reader-card.focus-reader>*:not(.word-stage):not(.reading-bottom):not(.focus-header){display:none!important}
+.reader-card.focus-reader .focus-header{
+  position:absolute;top:calc(10px + env(safe-area-inset-top,0px));left:var(--focus-side);right:var(--focus-side);
+  z-index:2;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;
+}
+.reader-card.focus-reader .focus-heading{display:flex;min-width:0;flex:1;flex-direction:column;gap:5px}
+.reader-card.focus-reader .focus-caption{font-size:9px;letter-spacing:1.5px;color:var(--muted)}
+.reader-card.focus-reader .focus-title{font-size:12px;line-height:1.35;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;max-width:70ch}
+.reader-card.focus-reader .focus-exit{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;min-width:84px;flex-shrink:0;
+  padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);font-size:13px;
+}
+.reader-card.focus-reader .focus-exit span{font-size:23px;line-height:1}
+.reader-card.focus-reader .focus-context{min-height:44px;padding:9px 12px;flex-shrink:0;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);font-size:13px}
+.reader-card.focus-reader .word-stage{
+  position:absolute;inset:auto 0 auto;top:50%;transform:translateY(-50%);width:100%;
+  height:var(--focus-word-height,200px);min-height:0;max-height:none;flex:none;margin:0;
+  padding:0 var(--focus-side);display:flex;align-items:center;justify-content:center;overflow:visible;
+}
+.reader-card.focus-reader .word-line{width:100%;max-width:none;line-height:1.5}
+.reader-card.focus-reader .anchor-guide.top{top:0}
+.reader-card.focus-reader .anchor-guide.bottom{bottom:0}
+.reader-card.focus-reader .stage-hint{display:none!important}
+.reader-card.focus-reader .reading-bottom{
+  position:absolute;left:var(--focus-side);right:var(--focus-side);bottom:calc(14px + env(safe-area-inset-bottom,0px));
+  display:block;margin:0;padding:0;z-index:2;
+}
+.reader-card.focus-reader .progress-slider,
+.reader-card.focus-reader .transport-row>.text-button,.reader-card.focus-reader .keyboard-hint{display:none!important}
+.reader-card.focus-reader .progress-labels{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;margin:0 auto 12px;max-width:520px;font-size:11px;line-height:1.4}
+.reader-card.focus-reader .progress-labels>span:first-child{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.reader-card.focus-reader .progress-labels>span:last-child{flex-shrink:0;white-space:nowrap}
+.reader-card.focus-reader .transport-row{display:block;position:static;margin:0;padding:0}
+.reader-card.focus-reader .transport{display:flex;align-items:center;justify-content:center;gap:8px;position:static;margin:0;max-width:100%}
+.reader-card.focus-reader .transport .icon-button{width:48px;min-width:44px;height:52px;min-height:44px;flex:0 0 auto;border:1px solid var(--line);border-radius:11px;background:var(--bg);padding:0}
+.reader-card.focus-reader .transport .play-button{height:56px;min-width:120px;max-width:none;flex:0 0 auto;border-radius:12px;font-size:15px;padding:0 18px}
+.reader-card.focus-reader .rewind-button span{left:19px;top:23px;font-size:9px}
+.reader-card.focus-reader .focus-speedbar{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:12px}
+.reader-card.focus-reader .focus-speedbar button{width:44px;min-width:44px;height:44px;min-height:44px;flex:0 0 auto;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);font-size:24px;line-height:1}
+.reader-card.focus-reader .focus-speed-label{min-width:94px;display:flex;align-items:baseline;justify-content:center;gap:5px;font-size:10px;color:var(--muted)}
+.reader-card.focus-reader .focus-speed-value{font-size:19px;font-weight:550;font-variant-numeric:tabular-nums;color:var(--text)}
+.reader-card.focus-reader .focus-exit:hover,.reader-card.focus-reader .focus-context:hover,.reader-card.focus-reader .focus-speedbar button:hover,
+.reader-card.focus-reader .transport .icon-button:hover{background:var(--tint)}
+@media(max-width:359px){
+  .reader-card.focus-reader .transport{gap:5px}
+  .reader-card.focus-reader .transport .icon-button{width:44px;height:50px}
+  .reader-card.focus-reader .transport .play-button{width:132px;min-width:132px;max-width:132px;font-size:14px;gap:7px;padding:0 10px}
+  .reader-card.focus-reader .rewind-button span{left:17px;top:22px}
+  .reader-card.focus-reader .focus-caption{font-size:8px}
+}
+@media(orientation:landscape) and (min-width:540px){
+  .reader-card.focus-reader .focus-header{top:calc(6px + env(safe-area-inset-top,0px))}
+  .reader-card.focus-reader .focus-heading{flex-direction:row;align-items:baseline;gap:14px}
+  .reader-card.focus-reader .focus-title{max-width:65vw}
+  .reader-card.focus-reader .reading-bottom{display:grid;grid-template-columns:auto auto;align-items:center;justify-content:center;gap:8px 24px;bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+  .reader-card.focus-reader .progress-labels{grid-column:1/-1;margin:0;width:100%;font-size:10px}
+  .reader-card.focus-reader .focus-speedbar{margin-top:0;gap:8px}
+  .reader-card.focus-reader .focus-speed-label{min-width:80px}
+  .reader-card.focus-reader .transport{gap:5px}
+  .reader-card.focus-reader .transport .icon-button{width:44px;height:48px}
+  .reader-card.focus-reader .transport .play-button{min-width:110px;height:52px}
+  .reader-card.focus-reader .rewind-button span{left:17px;top:21px}
+}
+@media(orientation:landscape) and (min-width:540px) and (max-width:650px){
+  .reader-card.focus-reader .reading-bottom{gap:8px 14px}
+  .reader-card.focus-reader .focus-speedbar{gap:5px}
+  .reader-card.focus-reader .focus-speed-label{min-width:74px}
+  .reader-card.focus-reader .transport .play-button{min-width:100px;padding:0 12px}
+}
