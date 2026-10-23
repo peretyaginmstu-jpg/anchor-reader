@@ -229,17 +229,28 @@ document.querySelector('#run').addEventListener('click', async () => {
       assert(el('progress').value === '0', 'Demo not reset');
       el('play-button').click();
     });
-    await record('Personal speed trial completes, scores and leaves book position intact', async () => {
+    await record('Personal speed trial uses custom pauses, scores and leaves book position intact', async () => {
       input('speed', '1200');
-      el('smart').checked = false;
+      el('smart').checked = true;
       el('smart').dispatchEvent(new w.Event('change', { bubbles: true }));
       const before = el('progress').value;
       el('smart-settings-button').click();
+      el('rhythm-advanced').open = true;
+      input('rhythm-pause-longWord', '4', 'change');
       el('rhythm-tempo').open = true;
       el('calibration-button').click();
       const calibration = d.querySelector('.calibration-dialog');
+      const trialWord = calibration.querySelector('[data-calibration="word-line"]');
+      let wordStarted = null;
+      let longWordDuration = null;
+      const observer = new w.MutationObserver(() => {
+        if (trialWord.getAttribute('aria-label') === 'библиотеку') wordStarted ??= performance.now();
+        else if (wordStarted !== null && longWordDuration === null) longWordDuration = performance.now() - wordStarted;
+      });
+      observer.observe(trialWord, { attributes: true, attributeFilter: ['aria-label'] });
       calibration.querySelector('[data-calibration="start"]').click();
-      await until(() => !calibration.querySelector('[data-calibration="questions"]').hidden, 'trial questions', 25000);
+      try { await until(() => !calibration.querySelector('[data-calibration="questions"]').hidden, 'trial questions', 25000); }
+      finally { observer.disconnect(); }
       const correct = [1, 2, 0];
       calibration.querySelectorAll('[data-calibration="question-fields"] fieldset').forEach((fieldset, index) => {
         fieldset.querySelectorAll('input')[correct[index]].checked = true;
@@ -250,6 +261,9 @@ document.querySelector('#run').addEventListener('click', async () => {
       calibration.querySelector('[data-calibration="apply"]').click();
       assert(!calibration.open, 'Trial did not close');
       assert(el('progress').value === before, 'Trial changed book position');
+      el('smart').checked = false;
+      el('smart').dispatchEvent(new w.Event('change', { bubbles: true }));
+      assert(longWordDuration !== null && longWordDuration >= 160, `Trial ignored custom ×4 long-word pause: ${longWordDuration} ms`);
     });
     await record('Dostoevsky shelf opens a complete Russian book with chapters', async () => {
       await until(() => d.querySelector('[data-book-id="dostoevsky-white-nights"]'), 'classics shelf');

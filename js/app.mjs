@@ -1,7 +1,7 @@
 import { ReadingEngine, tokenizeChapters, remainingMs, applyPauseOptions } from './reader.mjs?v=20261023-rhythm';
 import { importBook, bookFromText } from './importers.mjs';
 import * as library from './storage.mjs?v=20261023-rhythm';
-import { setupCalibration } from './calibration.mjs';
+import { setupCalibration } from './calibration.mjs?v=20261023-rhythm';
 import { selectBooks, listAuthors, bookCount } from './library-search.mjs';
 import { setupFocusReader } from './focus.mjs?v=20261023-rhythm';
 
@@ -55,7 +55,7 @@ const engine = new ReadingEngine({ tokens: doc.tokens, onUpdate: () => {
   }
   render();
 } });
-const calibration = setupCalibration({ getWpm: () => engine.wpm, getSmart: () => engine.smart, onApply: setSpeed, pauseMain: () => engine.pause() });
+const calibration = setupCalibration({ getWpm: () => engine.wpm, getSmart: () => engine.smart, getPauses: () => settings.pauseOptions, onApply: setSpeed, pauseMain: () => engine.pause() });
 smartSettings = setupSmartSettings({
   getSettings: () => settings,
   onOpen: () => engine.pause(),

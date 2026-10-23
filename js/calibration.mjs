@@ -1,4 +1,5 @@
-import { ReadingEngine, tokenizeChapters } from './reader.mjs';
+import { ReadingEngine, tokenizeChapters } from './reader.mjs?v=20261023-rhythm';
+import { normalizePauses } from './rhythm.mjs';
 
 // Original passage written for this short, informal in-app trial.
 const PASSAGE = `В субботу утром Лена пришла в районную библиотеку помочь с обменом семенами. Обычно встречи проходили во дворе, но после ночного дождя столы перенесли в светлый зал на первом этаже. На каждом столе лежали бумажные пакеты, карандаши и небольшие карточки.
@@ -86,7 +87,7 @@ function safeSpeed(value) {
 }
 
 /** An informal passage trial. Its engine and elapsed time are separate from the book. */
-export function setupCalibration({ getWpm = () => 300, getSmart = () => true, onApply = () => {}, pauseMain = () => {} } = {}) {
+export function setupCalibration({ getWpm = () => 300, getSmart = () => true, getPauses = () => undefined, onApply = () => {}, pauseMain = () => {} } = {}) {
   installStyles();
   const id = `anchor-calibration-${++instanceCount}`;
   const doc = tokenizeChapters([{ title: 'Маленький сад', paragraphs: PASSAGE.split(/\n\s*\n/u) }]);
@@ -143,6 +144,7 @@ export function setupCalibration({ getWpm = () => 300, getSmart = () => true, on
   let engine = null;
   let selectedWpm = 300;
   let selectedSmart = true;
+  let selectedPauses = normalizePauses();
   let stage = 'setup';
   let opener = null;
   let attempts = 0;
@@ -259,7 +261,7 @@ export function setupCalibration({ getWpm = () => 300, getSmart = () => true, on
     attempts += 1;
     showStage('reading');
     find('run-speed').textContent = `${selectedWpm} слов/мин`;
-    engine = new ReadingEngine({ tokens: doc.tokens, wpm: selectedWpm, smart: selectedSmart, onUpdate: updateReading });
+    engine = new ReadingEngine({ tokens: doc.tokens, wpm: selectedWpm, smart: selectedSmart, pauses: selectedPauses, onUpdate: updateReading });
     find('toggle').focus();
     engine.play();
   }
@@ -305,6 +307,7 @@ export function setupCalibration({ getWpm = () => 300, getSmart = () => true, on
     opener = document.activeElement;
     pauseMain();
     selectedSmart = Boolean(getSmart());
+    selectedPauses = normalizePauses(getPauses());
     setupStage(getWpm());
     dialog.showModal();
     find('close').focus();
