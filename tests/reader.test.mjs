@@ -58,6 +58,52 @@ test('anchors use the left middle alphanumeric grapheme without losing punctuati
   }
 });
 
+test('optional left anchors shift one meaningful grapheme for words with at least five letters', () => {
+  for (const [word, prefix, anchor, suffix, letterCount] of [
+    ['книга', 'к', 'н', 'ига', 5],
+    ['reading', 're', 'a', 'ding', 7],
+    ['letter', 'l', 'e', 'tter', 6],
+    ['«книга!»', '«к', 'н', 'ига!»', 5],
+    ['кто-то', 'к', 'т', 'о-то', 5],
+    ['ко́шка', 'к', 'о́', 'шка', 5],
+    ['réader', 'r', 'é', 'ader', 6],
+    ['🙂книга', '🙂к', 'н', 'ига', 5],
+    ['extraordinary', 'extra', 'o', 'rdinary', 13],
+    ['abcde-12', 'ab', 'c', 'de-12', 7],
+  ]) {
+    const result = splitAnchor(word, 'left');
+    assert.deepEqual(result, { prefix, anchor, suffix, letterCount }, word);
+    assert.equal(result.prefix + result.anchor + result.suffix, word, 'the original text is preserved');
+  }
+});
+
+test('left mode preserves short words, numeric tokens, and tokens with fewer than five letters', () => {
+  for (const word of ['я', 'мама', 'read', '🙂мама', '123456789', '12,345', '−123.45%', '١٢٣٤٥', 'abc-12345', 'abcd5', '', '…']) {
+    assert.deepEqual(splitAnchor(word, 'left'), splitAnchor(word), word);
+  }
+});
+
+test('explicit center and invalid modes preserve the original default anchor exactly', () => {
+  for (const word of ['книга', 'letter', 'extraordinary', '«ко́шка!»', 'кто-то', '123456789', 'abcde-12', '']) {
+    const baseline = splitAnchor(word);
+    for (const mode of ['center', undefined, null, '', 'LEFT', 'orp', {}, 1]) {
+      assert.deepEqual(splitAnchor(word, mode), baseline, `${word}: ${String(mode)}`);
+    }
+  }
+});
+
+test('display anchor selection does not change compiled tokens or timing', () => {
+  const doc = tokenizeChapters([{ paragraphs: ['«ко́шка!» extraordinary книга'] }]);
+  const before = structuredClone(doc);
+  for (const token of doc.tokens) {
+    assert.deepEqual(splitAnchor(token.text), {
+      prefix: token.prefix, anchor: token.anchor, suffix: token.suffix, letterCount: token.letterCount,
+    });
+    splitAnchor(token.text, 'left');
+  }
+  assert.deepEqual(doc, before);
+});
+
 test('tokenization preserves order and half-open ranges, omitting empty chapters', () => {
   const doc = tokenizeChapters([
     { title: 'Пустая', paragraphs: ['… —'] },

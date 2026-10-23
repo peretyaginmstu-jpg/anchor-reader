@@ -1,4 +1,4 @@
-import { ReadingEngine, tokenizeChapters } from './reader.mjs?v=20261023-rhythm';
+import { ReadingEngine, tokenizeChapters, splitAnchor } from './reader.mjs?v=20261023-mobile';
 import { normalizePauses } from './rhythm.mjs';
 
 // Original passage written for this short, informal in-app trial.
@@ -87,7 +87,7 @@ function safeSpeed(value) {
 }
 
 /** An informal passage trial. Its engine and elapsed time are separate from the book. */
-export function setupCalibration({ getWpm = () => 300, getSmart = () => true, getPauses = () => undefined, onApply = () => {}, pauseMain = () => {} } = {}) {
+export function setupCalibration({ getWpm = () => 300, getSmart = () => true, getPauses = () => undefined, getAnchorMode = () => 'center', onApply = () => {}, pauseMain = () => {} } = {}) {
   installStyles();
   const id = `anchor-calibration-${++instanceCount}`;
   const doc = tokenizeChapters([{ title: 'Маленький сад', paragraphs: PASSAGE.split(/\n\s*\n/u) }]);
@@ -145,6 +145,7 @@ export function setupCalibration({ getWpm = () => 300, getSmart = () => true, ge
   let selectedWpm = 300;
   let selectedSmart = true;
   let selectedPauses = normalizePauses();
+  let selectedAnchorMode = 'center';
   let stage = 'setup';
   let opener = null;
   let attempts = 0;
@@ -197,13 +198,14 @@ export function setupCalibration({ getWpm = () => 300, getSmart = () => true, ge
   function fitWord() {
     if (stage !== 'reading' || !engine || !measure) return;
     const token = doc.tokens[engine.index];
+    const parts = selectedAnchorMode === 'left' ? splitAnchor(token.text, 'left') : token;
     const line = find('word-line');
     const width = line.getBoundingClientRect().width;
     if (!width) return;
     const base = width < 360 ? 42 : 48;
     measure.font = `${base}px Georgia, "Times New Roman", serif`;
     measure.fontKerning = 'none';
-    const half = Math.max(measure.measureText(token.prefix).width, measure.measureText(token.suffix).width) + measure.measureText(token.anchor).width / 2;
+    const half = Math.max(measure.measureText(parts.prefix).width, measure.measureText(parts.suffix).width) + measure.measureText(parts.anchor).width / 2;
     line.style.fontSize = `${Math.min(base, base * Math.max(1, width / 2 - 4) / Math.max(1, half))}px`;
   }
 
@@ -237,9 +239,10 @@ export function setupCalibration({ getWpm = () => 300, getSmart = () => true, ge
     if (playing && activeSince === null) activeSince = performance.now();
     else if (!playing) stopTiming();
     const token = doc.tokens[index];
-    find('prefix').textContent = token.prefix;
-    find('anchor').textContent = token.anchor;
-    find('suffix').textContent = token.suffix;
+    const parts = selectedAnchorMode === 'left' ? splitAnchor(token.text, 'left') : token;
+    find('prefix').textContent = parts.prefix;
+    find('anchor').textContent = parts.anchor;
+    find('suffix').textContent = parts.suffix;
     find('word-line').setAttribute('aria-label', token.text);
     find('progress').value = finished ? doc.totalWords : index;
     find('progress-label').textContent = `Слово ${index + 1} из ${doc.totalWords}`;
@@ -308,6 +311,7 @@ export function setupCalibration({ getWpm = () => 300, getSmart = () => true, ge
     pauseMain();
     selectedSmart = Boolean(getSmart());
     selectedPauses = normalizePauses(getPauses());
+    selectedAnchorMode = getAnchorMode() === 'left' ? 'left' : 'center';
     setupStage(getWpm());
     dialog.showModal();
     find('close').focus();

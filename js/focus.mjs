@@ -14,11 +14,15 @@ export function setupFocusReader({
   const view = doc.defaultView;
   const bottom = reader.querySelector('.reading-bottom');
   const contextSource = reader.querySelector('#context-button');
+  const playButton = reader.querySelector('#play-button');
+  const rewindButton = reader.querySelector('#rewind-button');
+  const rewindParent = rewindButton?.parentNode;
+  const rewindNext = rewindButton?.nextSibling;
   if (!bottom) throw new Error('Не найдены элементы управления чтением.');
 
   const header = doc.createElement('div');
   header.className = 'focus-header';
-  header.innerHTML = '<div class="focus-heading"><span class="focus-caption">РЕЖИМ ЧТЕНИЯ</span><span class="focus-title"></span></div><button class="focus-context" type="button" aria-label="Открыть окружающий абзац">Абзац</button><button class="focus-exit" type="button" aria-label="Выйти из полноэкранного режима"><span aria-hidden="true">×</span> Выйти</button>';
+  header.innerHTML = '<div class="focus-heading"><span class="focus-caption">РЕЖИМ ЧТЕНИЯ</span><span class="focus-title"></span></div>';
   reader.prepend(header);
   const speedbar = doc.createElement('div');
   speedbar.className = 'focus-speedbar';
@@ -26,9 +30,15 @@ export function setupFocusReader({
   speedbar.setAttribute('aria-label', 'Темп чтения');
   speedbar.innerHTML = '<button class="focus-speed-down" type="button" aria-label="Читать медленнее на 25 слов в минуту">−</button><button class="focus-speed-label" type="button" aria-label="Настройки умного чтения" aria-haspopup="dialog"><strong class="focus-speed-value">300</strong><span>слов/мин · настройки</span></button><button class="focus-speed-up" type="button" aria-label="Читать быстрее на 25 слов в минуту">+</button>';
   bottom.append(speedbar);
+  const utility = doc.createElement('div');
+  utility.className = 'focus-utility';
+  utility.setAttribute('role', 'group');
+  utility.setAttribute('aria-label', 'Навигация и выход из режима чтения');
+  utility.innerHTML = '<button class="focus-context" type="button" aria-label="Открыть окружающий абзац">Абзац</button><button class="focus-exit" type="button" aria-label="Выйти из полноэкранного режима"><span aria-hidden="true">×</span> Выйти</button>';
+  bottom.append(utility);
 
-  const exitButton = header.querySelector('.focus-exit');
-  const contextButton = header.querySelector('.focus-context');
+  const exitButton = utility.querySelector('.focus-exit');
+  const contextButton = utility.querySelector('.focus-context');
   contextButton.hidden = !contextSource;
   const speedDown = speedbar.querySelector('.focus-speed-down');
   const speedUp = speedbar.querySelector('.focus-speed-up');
@@ -101,6 +111,14 @@ export function setupFocusReader({
     const height = viewport?.height || view.innerHeight;
     const left = viewport?.offsetLeft || 0;
     const top = viewport?.offsetTop || 0;
+    // Pinch zoom changes the visible viewport without changing CSS media queries.
+    // Reflow the same controls to keep them reachable instead of duplicating them.
+    const compact = height <= 450;
+    reader.classList.toggle('focus-compact', compact);
+    reader.classList.toggle('focus-landscape', compact && width >= 540);
+    reader.classList.toggle('focus-narrow', width < 280);
+    const utilityParent = compact ? header : bottom;
+    if (utility.parentElement !== utilityParent) utilityParent.append(utility);
     reader.style.setProperty('--focus-width', `${width}px`);
     reader.style.setProperty('--focus-height', `${height}px`);
     reader.style.setProperty('--focus-left', `${left}px`);
@@ -137,7 +155,9 @@ export function setupFocusReader({
     fontLimit = Infinity;
     if (layoutFrame !== null) view.cancelAnimationFrame(layoutFrame);
     layoutFrame = null;
-    reader.classList.remove('focus-reader', 'focus-mode');
+    reader.classList.remove('focus-reader', 'focus-mode', 'focus-compact', 'focus-landscape', 'focus-narrow');
+    if (rewindButton && rewindParent) rewindParent.insertBefore(rewindButton, rewindNext?.parentNode === rewindParent ? rewindNext : null);
+    if (utility.parentElement !== bottom) bottom.append(utility);
     for (const property of ['--focus-width', '--focus-height', '--focus-left', '--focus-top', '--focus-word-height']) reader.style.removeProperty(property);
     if (originalTriggerLabel === null) trigger.removeAttribute('aria-label');
     else trigger.setAttribute('aria-label', originalTriggerLabel);
@@ -165,13 +185,14 @@ export function setupFocusReader({
     active = true;
     nativeEntered = false;
     lockBackground();
+    if (rewindButton) utility.prepend(rewindButton);
     reader.classList.add('focus-mode', 'focus-reader');
     trigger.setAttribute('aria-label', 'Выйти из полноэкранного режима');
     trigger.setAttribute('title', 'Выйти из полноэкранного режима');
     trigger.setAttribute('aria-pressed', 'true');
     sync();
     viewportLayout();
-    exitButton.focus({ preventScroll: true });
+    (playButton || exitButton).focus({ preventScroll: true });
     if (preferNative && doc.fullscreenEnabled !== false && typeof reader.requestFullscreen === 'function') {
       try {
         await reader.requestFullscreen({ navigationUI: 'hide' });
@@ -258,6 +279,7 @@ export function setupFocusReader({
     controlsObserver?.disconnect();
     header.remove();
     speedbar.remove();
+    utility.remove();
   }
 
   return { enter, exit, toggle, sync, dispose, get active() { return active; }, get maxFontSize() { return fontLimit; } };

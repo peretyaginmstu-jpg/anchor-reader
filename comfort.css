@@ -1,0 +1,77 @@
+/* A short, explicit comfort trial. All reading timers belong to its own engine. */
+.comfort-dialog{width:min(560px,calc(100% - 24px));max-width:none;max-height:calc(100dvh - 24px);padding:0;overflow:hidden;border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--text)}
+.comfort-dialog[open]{display:flex;flex-direction:column}
+.comfort-dialog[hidden],.comfort-dialog [hidden]{display:none!important}
+.comfort-dialog[data-phase=ramp],.comfort-dialog[data-phase=trial]{height:min(560px,calc(100dvh - 24px))}
+.comfort-header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:20px 24px 12px;flex-shrink:0}
+.comfort-header h2{font:400 27px/1.2 Georgia,"Times New Roman",serif;margin:0}
+.comfort-dialog button{min-height:44px;border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:14px;line-height:1.4;background:var(--surface);color:var(--text)}
+.comfort-dialog button:hover{background:var(--tint)}
+.comfort-dialog .comfort-close{width:44px;height:44px;min-width:44px;padding:0;font-size:27px;flex-shrink:0;background:var(--bg)}
+.comfort-body{display:flex;flex-direction:column;min-height:0;flex:1 1 auto;padding:8px 24px 18px;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scroll-padding-block:12px}
+.comfort-intro>p:first-child{font-size:16px;line-height:1.7;margin:2px 0 14px}
+.comfort-note{font-size:12px;line-height:1.65;color:var(--muted);margin:10px 0 0}
+.comfort-confirm h3,.comfort-result h3{font-size:15px;line-height:1.5;font-weight:550;margin:0 0 8px}
+.comfort-reading{display:flex;flex-direction:column;flex:1 1 auto;min-height:120px}
+.comfort-reading-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-shrink:0}
+.comfort-speed{display:flex;align-items:baseline;gap:6px;white-space:nowrap}
+.comfort-speed strong{font-size:26px;font-weight:550;font-variant-numeric:tabular-nums}
+.comfort-speed span{font-size:11px;color:var(--muted)}
+.comfort-reading-heading>p{font-size:11px;line-height:1.5;text-align:right;color:var(--muted);margin:0}
+.comfort-word-stage{position:relative;display:flex;align-items:center;justify-content:center;flex:1 1 auto;min-height:76px;margin-top:10px;padding:12px 6px;background:var(--bg);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.comfort-word-line{display:grid;grid-template-columns:minmax(0,1fr) max-content minmax(0,1fr);width:100%;font:48px/1.5 Georgia,"Times New Roman",serif;font-kerning:none;font-variant-ligatures:none;letter-spacing:0;white-space:pre;user-select:none}
+.comfort-word-line>span:first-child{text-align:right;justify-self:end}
+.comfort-word-line>span:last-child{text-align:left;justify-self:start}
+#comfort-anchor{color:var(--accent)}
+.comfort-guide{position:absolute;left:50%;width:1px;height:10px;background:var(--accent);opacity:.45;transform:translateX(-.5px)}
+.comfort-guide-top{top:0}.comfort-guide-bottom{bottom:0}
+.comfort-run-status{min-height:0;margin:8px 0 0;font-size:11px;line-height:1.5;color:var(--muted)}
+.comfort-run-status:empty{display:none}
+.comfort-candidate{display:grid;grid-template-columns:48px minmax(100px,1fr) 48px;align-items:center;gap:16px;max-width:300px;margin:22px auto 14px}
+.comfort-candidate>button{height:48px;padding:0;font-size:25px}
+.comfort-candidate>div{text-align:center}
+.comfort-candidate output{display:block;font-size:40px;line-height:1.2;font-weight:550;font-variant-numeric:tabular-nums}
+.comfort-candidate span{display:block;font-size:11px;color:var(--muted);margin-top:4px}
+.comfort-result-speed{text-align:center;margin:24px 0 16px}
+.comfort-result-speed strong{font-size:40px;font-weight:550;font-variant-numeric:tabular-nums}
+.comfort-result-speed span{font-size:12px;color:var(--muted)}
+.comfort-footer{display:flex;flex-direction:column;gap:9px;padding:14px 24px 18px;border-top:1px solid var(--line);background:var(--surface);flex-shrink:0}
+.comfort-dialog .comfort-primary{min-height:48px;border-color:var(--text);background:var(--text);color:var(--surface);font-weight:550}
+.comfort-dialog .comfort-primary:hover{background:var(--text);opacity:.9}
+.comfort-reading-actions,.comfort-result-actions{display:grid;grid-template-columns:1fr;gap:8px}
+.comfort-secondary-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.comfort-dialog .comfort-secondary{color:var(--muted);background:transparent}
+#comfort-disclaimer{font-size:10px;line-height:1.6;color:var(--muted);text-align:center;margin:0}
+@media(max-width:600px){
+  .comfort-dialog{width:100%;max-height:min(660px,calc(100dvh - 12px));margin:auto auto 0;border-radius:18px 18px 0 0;border-bottom:0}
+  .comfort-dialog[data-phase=ramp],.comfort-dialog[data-phase=trial]{height:min(600px,calc(100dvh - 12px))}
+  .comfort-header{padding:14px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px))}
+  .comfort-header h2{font-size:25px}
+  .comfort-body{padding:6px max(16px,env(safe-area-inset-right,0px)) 14px max(16px,env(safe-area-inset-left,0px))}
+  .comfort-intro>p:first-child{font-size:15px}
+  .comfort-footer{padding:12px max(16px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+}
+@media(max-width:359px){
+  .comfort-header h2{font-size:23px}
+  .comfort-reading-heading{gap:10px}
+  .comfort-reading-heading>p{max-width:125px;font-size:10px}
+  .comfort-speed strong{font-size:24px}
+  .comfort-dialog button{padding-inline:10px;font-size:13px}
+}
+@media(max-height:450px){
+  .comfort-dialog{max-height:calc(100dvh - 12px);margin:auto}
+  .comfort-dialog[data-phase=ramp],.comfort-dialog[data-phase=trial]{height:calc(100dvh - 12px)}
+  .comfort-header{padding:6px max(16px,env(safe-area-inset-right,0px)) 4px max(16px,env(safe-area-inset-left,0px))}
+  .comfort-header h2{font-size:23px}
+  .comfort-body{padding-top:2px;padding-bottom:8px}
+  .comfort-reading{min-height:105px}
+  .comfort-speed strong{font-size:22px}
+  .comfort-word-stage{margin-top:5px;min-height:64px}
+  .comfort-footer{padding:7px max(16px,env(safe-area-inset-right,0px)) max(8px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));gap:5px}
+  .comfort-reading-actions{grid-template-columns:minmax(0,1.4fr) minmax(0,1.6fr)}
+  .comfort-result-actions{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr)}
+  .comfort-dialog .comfort-secondary{min-height:48px}
+  .comfort-candidate{margin-block:10px;gap:12px}
+  .comfort-candidate output,.comfort-result-speed strong{font-size:30px}
+  .comfort-result-speed{margin:10px 0}
+}

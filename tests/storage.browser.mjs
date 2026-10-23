@@ -174,6 +174,27 @@ export async function runStorageTests() {
       equal(DEFAULT_SETTINGS.pauseOptions, { longWord: 1.25, punctuation: 1.5, sentence: 2, paragraph: 2.5 }, 'Defaults must remain unchanged');
     });
 
+    await test('Anchor mode survives reopening and accepts only center or left', async () => {
+      const before = await library.getSettings();
+      const bookBefore = await library.getBook(firstBook.id);
+      equal((await library.saveSettings({ anchorMode: 'left' })).anchorMode, 'left', 'Left anchor mode must be saved');
+      await library.close();
+      library = createLibrary(databaseName);
+      equal((await library.getSettings()).anchorMode, 'left', 'Left anchor mode must survive reopening');
+      equal((await library.saveSettings({ theme: before.theme })).anchorMode, 'left', 'Unrelated settings patches must preserve anchor mode');
+      equal((await library.saveSettings({ anchorMode: 'center' })).anchorMode, 'center', 'Center anchor mode must be saved');
+      for (const invalid of ['right', 'LEFT', '', null, false, 1, {}]) {
+        await writeRawSettings(databaseName, { ...before, anchorMode: invalid });
+        equal((await library.getSettings()).anchorMode, 'center', 'Invalid stored anchor modes must normalize to center');
+        const normalized = await library.saveSettings({ anchorMode: invalid });
+        equal(normalized.anchorMode, 'center', 'Invalid anchor patches must normalize to center');
+        equal((await readRawRecord(databaseName, 'settings', 'preferences')).anchorMode, 'center', 'Stored anchor mode must be normalized');
+      }
+      equal(await library.getBook(firstBook.id), bookBefore, 'Changing anchor mode must preserve the book and its position');
+      equal((await library.getSettings()).smart, before.smart, 'Anchor changes must preserve smart mode');
+      await library.saveSettings(before);
+    });
+
     await test('Closing and reopening preserves books, settings, and position', async () => {
       await library.close();
       library = createLibrary(databaseName);
@@ -204,6 +225,7 @@ export async function runStorageTests() {
         await seedVersionOne(migrationName, [legacyBook, secondBook], previousSettings);
         equal(await upgraded.getBook(firstBook.id), legacyBook, 'Migration must preserve the complete legacy book');
         equal(await upgraded.getSettings(), { ...DEFAULT_SETTINGS, ...previousSettings }, 'Missing rhythm preferences must receive defaults while legacy values survive');
+        equal((await upgraded.getSettings()).anchorMode, 'center', 'Legacy preferences must keep the original centered anchor');
         equal(await readRawRecord(migrationName, 'settings', 'preferences'), previousSettings, 'Reading legacy preferences must not rewrite the stored record');
         const list = await upgraded.listBooks();
         equal(list.map((book) => book.id), [secondBook.id, firstBook.id], 'Migrated metadata must retain recency order');

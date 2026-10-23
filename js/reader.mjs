@@ -3,6 +3,7 @@ import { DEFAULT_PAUSES, normalizePauses } from './rhythm.mjs';
 
 const graphemeSegmenter = new Intl.Segmenter('ru', { granularity: 'grapheme' });
 const meaningfulCharacter = /[\p{L}\p{N}]/u;
+const letterCharacter = /\p{L}/u;
 const openingPunctuation = /^[\p{Ps}\p{Pi}«‹“„‘"']+$/u;
 const closingPunctuation = /[\p{Pe}\p{Pf}»›”’"']+$/u;
 
@@ -21,15 +22,23 @@ function position(value, length) {
   return length ? Math.min(length - 1, Math.max(0, Number.isFinite(numeric) ? Math.floor(numeric) : 0)) : 0;
 }
 
-/** The middle alphanumeric grapheme, choosing the left middle for an even count. */
-export function splitAnchor(text) {
+/**
+ * Center uses the left middle alphanumeric grapheme for an even count.
+ * Optional 'left' is a display heuristic: one meaningful grapheme earlier when
+ * the token contains at least five letters. Other mode values retain center.
+ */
+export function splitAnchor(text, mode = 'center') {
   const graphemes = Array.from(graphemeSegmenter.segment(String(text)), ({ segment }) => segment);
   const meaningful = [];
+  let letters = 0;
   graphemes.forEach((grapheme, index) => {
     if (meaningfulCharacter.test(grapheme)) meaningful.push(index);
+    if (letterCharacter.test(grapheme)) letters += 1;
   });
+  const middle = Math.floor((meaningful.length - 1) / 2);
+  const anchorPosition = middle - (mode === 'left' && letters >= 5 ? 1 : 0);
   const selected = meaningful.length
-    ? meaningful[Math.floor((meaningful.length - 1) / 2)]
+    ? meaningful[anchorPosition]
     : Math.max(0, Math.floor((graphemes.length - 1) / 2));
   return {
     prefix: graphemes.slice(0, selected).join(''),

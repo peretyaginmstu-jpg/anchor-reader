@@ -2,6 +2,9 @@ import { runImporterTests } from './importers.browser.mjs';
 import { runStorageTests } from './storage.browser.mjs';
 import { runFocusTests } from './focus.browser.mjs';
 import { runRhythmTests } from './rhythm.browser.mjs';
+import { runMobileTests } from './mobile.browser.mjs';
+import { runAnchorTests } from './anchor.browser.mjs';
+import { runComfortTests } from './comfort.browser.mjs';
 import * as storage from '../js/storage.mjs';
 
 const output = document.querySelector('#results');
@@ -33,7 +36,7 @@ document.querySelector('#run').addEventListener('click', async () => {
       report.failed += result.failed;
     }
     savedSettings = await storage.getSettings();
-    await storage.saveSettings({ pauseOptions: { ...storage.DEFAULT_SETTINGS.pauseOptions }, smart: true, startDelay: 0, pauseAfterParagraph: false, pauseAfterChapter: false });
+    await storage.saveSettings({ pauseOptions: { ...storage.DEFAULT_SETTINGS.pauseOptions }, anchorMode: 'center', smart: true, startDelay: 0, pauseAfterParagraph: false, pauseAfterChapter: false });
     (await storage.listBooks()).forEach(book => originalIds.add(book.id));
     frame = document.createElement('iframe');
     frame.width = '1440';
@@ -94,6 +97,9 @@ document.querySelector('#run').addEventListener('click', async () => {
     }
     await runFocusTests({ frame, record });
     await runRhythmTests({ frame, record });
+    await runMobileTests({ frame, record });
+    await runAnchorTests({ frame, record });
+    await runComfortTests({ frame, record });
     await record('Keyboard works after clicking reader controls', async () => {
       input('progress', '0');
       el('next-button').click();
@@ -185,6 +191,8 @@ document.querySelector('#run').addEventListener('click', async () => {
     let savedPosition;
     await record('Save a custom rhythm for reload', async () => {
       el('smart-settings-button').click();
+      el('rhythm-advanced').open = true;
+      d.querySelector('[data-anchor-mode="left"]').click();
       input('rhythm-pause-sentence', '3.15', 'change');
       d.querySelector('[data-start-delay="2000"]').click();
       input('rhythm-stop', 'chapter', 'change');
@@ -207,6 +215,7 @@ document.querySelector('#run').addEventListener('click', async () => {
       assert(d.documentElement.dataset.theme === theme, 'Theme not restored');
       el('smart-settings-button').click();
       assert(el('rhythm-pause-sentence').value === '3.15', 'Custom pause not restored');
+      assert(d.querySelector('[data-anchor-mode="left"]').getAttribute('aria-pressed') === 'true', 'Anchor mode not restored');
       assert(d.querySelector('[data-start-delay="2000"]').getAttribute('aria-pressed') === 'true', 'Start delay not restored');
       assert(el('rhythm-stop').value === 'chapter', 'Chapter stop not restored');
       d.querySelector('[data-start-delay="0"]').click();

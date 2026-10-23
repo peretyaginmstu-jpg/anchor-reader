@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   startDelay: 0,
   pauseAfterParagraph: false,
   pauseAfterChapter: false,
+  anchorMode: 'center',
 });
 
 const SETTINGS_KEY = 'preferences';
@@ -28,6 +29,7 @@ function normalizeSettings(value) {
     startDelay: [0, 1000, 2000].includes(saved.startDelay) ? saved.startDelay : DEFAULT_SETTINGS.startDelay,
     pauseAfterParagraph: typeof saved.pauseAfterParagraph === 'boolean' ? saved.pauseAfterParagraph : DEFAULT_SETTINGS.pauseAfterParagraph,
     pauseAfterChapter: typeof saved.pauseAfterChapter === 'boolean' ? saved.pauseAfterChapter : DEFAULT_SETTINGS.pauseAfterChapter,
+    anchorMode: ['center', 'left'].includes(saved.anchorMode) ? saved.anchorMode : DEFAULT_SETTINGS.anchorMode,
   };
 }
 

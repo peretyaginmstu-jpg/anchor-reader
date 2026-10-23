@@ -222,7 +222,7 @@ export async function runRhythmTests({ frame, record }) {
         assert(body.scrollTop > 0, 'Settings body cannot scroll');
         assert(Math.abs(footerBefore.top - footerAfter.top) <= 1, 'Footer moved with the scrolled content');
         assert(trial.top >= bodyBounds.top - 1 && trial.bottom <= bodyBounds.bottom + 1, 'Last settings control is unreachable by scrolling');
-        for (const id of ['rhythm-close', 'rhythm-reset', 'rhythm-done']) {
+        for (const id of ['rhythm-close', 'rhythm-done']) {
           const rect = element(id).getBoundingClientRect();
           assert(rect.top >= 0 && rect.bottom <= w.innerHeight + 1, `${id} is outside the visible viewport`);
         }

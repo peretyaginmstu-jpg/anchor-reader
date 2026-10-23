@@ -1,12 +1,15 @@
-import { ReadingEngine, tokenizeChapters, remainingMs, applyPauseOptions } from './reader.mjs?v=20261023-rhythm';
+import { ReadingEngine, tokenizeChapters, remainingMs, applyPauseOptions, splitAnchor } from './reader.mjs?v=20261023-mobile';
 import { importBook, bookFromText } from './importers.mjs';
-import * as library from './storage.mjs?v=20261023-rhythm';
-import { setupCalibration } from './calibration.mjs?v=20261023-rhythm';
+import * as library from './storage.mjs?v=20261023-mobile';
+import { setupCalibration } from './calibration.mjs?v=20261023-mobile';
 import { selectBooks, listAuthors, bookCount } from './library-search.mjs';
-import { setupFocusReader } from './focus.mjs?v=20261023-rhythm';
+import { setupFocusReader } from './focus.mjs?v=20261023-mobile';
 
 import { normalizePauses } from './rhythm.mjs';
-import { setupSmartSettings } from './smart-settings.mjs?v=20261023-rhythm';
+import { setupSmartSettings } from './smart-settings.mjs?v=20261023-mobile';
+
+import { setupMobileControls } from './mobile.mjs?v=20261023-mobile';
+import { setupComfortCalibration } from './comfort.mjs?v=20261023-mobile';
 
 const $ = (id) => document.getElementById(id);
 const demo = bookFromText(`Внимание — это маленькое путешествие. Обычно взгляд спешит по строкам, перескакивает вперёд и возвращается назад. Здесь всё устроено иначе. Слова появляются по одному, а красная буква остаётся на месте. Просто удерживайте взгляд рядом с ней.
@@ -55,13 +58,22 @@ const engine = new ReadingEngine({ tokens: doc.tokens, onUpdate: () => {
   }
   render();
 } });
-const calibration = setupCalibration({ getWpm: () => engine.wpm, getSmart: () => engine.smart, getPauses: () => settings.pauseOptions, onApply: setSpeed, pauseMain: () => engine.pause() });
+setupMobileControls();
+const calibration = setupCalibration({ getWpm: () => engine.wpm, getSmart: () => engine.smart, getPauses: () => settings.pauseOptions, getAnchorMode: () => settings.anchorMode, onApply: setSpeed, pauseMain: () => engine.pause() });
+const comfort = setupComfortCalibration({
+  getAnchorMode: () => settings.anchorMode,
+  getSmart: () => engine.smart,
+  getPauses: () => settings.pauseOptions,
+  pauseMain: () => engine.pause(),
+  onApply: (speed) => { setSpeed(speed); notify(`Ваш ориентир комфорта — ${speed} слов/мин. Можно продолжить книгу.`); },
+});
 smartSettings = setupSmartSettings({
   getSettings: () => settings,
   onOpen: () => engine.pause(),
   onChange: updateRhythm,
   onCalibration: () => { smartSettings.close(); calibration.open(); },
 });
+$('comfort-button').addEventListener('click', () => { smartSettings.close(); comfort.open(); });
 focusReader = setupFocusReader({
   readState: () => ({ wpm: engine.wpm, title: currentBook.title, status: engine.preparing ? 'Приготовьтесь…' : pausedAtBoundary ? `Пауза после ${pausedAtBoundary === 'chapter' ? 'главы' : 'абзаца'}` : '' }),
   onSpeedChange: setSpeed,
@@ -122,6 +134,7 @@ function fitWord() {
   $('font-larger').disabled = scale >= 1.6;
   const token = doc.tokens[engine.index];
   if (!token) return;
+  const parts = settings.anchorMode === 'left' ? splitAnchor(token.text, 'left') : token;
   const line = $('word-line');
   const fullscreen = Boolean(document.fullscreenElement) || $('reader').classList.contains('focus-mode');
   const base = Math.min(focusReader?.maxFontSize ?? Infinity, (fullscreen ? (window.innerWidth <= 600 ? 58 : 90) : window.innerWidth <= 600 ? 48 : window.innerWidth <= 850 ? 60 : 68) * (settings.fontScale || 1));
@@ -129,7 +142,7 @@ function fitWord() {
   measure.fontKerning = 'none';
   const width = line.getBoundingClientRect().width;
   if (!width) return;
-  const requiredHalf = Math.max(measure.measureText(token.prefix).width, measure.measureText(token.suffix).width) + measure.measureText(token.anchor).width / 2;
+  const requiredHalf = Math.max(measure.measureText(parts.prefix).width, measure.measureText(parts.suffix).width) + measure.measureText(parts.anchor).width / 2;
   fitSize = Math.min(base, base * Math.max(1, width / 2 - 4) / Math.max(1, requiredHalf));
   line.style.fontSize = `${fitSize}px`;
 }
@@ -138,9 +151,10 @@ function render() {
   const token = doc.tokens[engine.index];
   if (!token) return;
   if (lastDrawnIndex !== engine.index) {
-    $('word-prefix').textContent = token.prefix;
-    $('word-anchor').textContent = token.anchor;
-    $('word-suffix').textContent = token.suffix;
+    const parts = settings.anchorMode === 'left' ? splitAnchor(token.text, 'left') : token;
+    $('word-prefix').textContent = parts.prefix;
+    $('word-anchor').textContent = parts.anchor;
+    $('word-suffix').textContent = parts.suffix;
     $('word-line').setAttribute('aria-label', token.text);
     lastDrawnIndex = engine.index;
     fitWord();
@@ -317,6 +331,7 @@ function contextNodes(center, onSelect) {
       const button = document.createElement('button');
       button.className = `context-word${index === engine.index ? ' current' : ''}`;
       button.textContent = doc.tokens[index].text;
+      button.dataset.wordIndex = String(index);
       if (index === engine.index) button.setAttribute('aria-current', 'location');
       button.addEventListener('click', () => onSelect(index));
       wrapper.append(button, document.createTextNode(' '));
@@ -329,9 +344,20 @@ function contextNodes(center, onSelect) {
 function renderContext() {
   $('context-paragraph').replaceChildren(...contextNodes(contextParagraphIndex, index => {
     seekWord(index);
-    contextParagraphIndex = doc.tokens[index].paragraphIndex;
-    renderContext();
-    $('continue-button').focus();
+    const nextParagraph = doc.tokens[index].paragraphIndex;
+    if (nextParagraph !== contextParagraphIndex) {
+      contextParagraphIndex = nextParagraph;
+      renderContext();
+      $('context-paragraph').querySelector('.current')?.scrollIntoView({ block: 'nearest' });
+    } else {
+      $('context-paragraph').querySelectorAll('.context-word').forEach(button => {
+        const selected = Number(button.dataset.wordIndex) === index;
+        button.classList.toggle('current', selected);
+        if (selected) button.setAttribute('aria-current', 'location');
+        else button.removeAttribute('aria-current');
+      });
+    }
+    $('continue-button').focus({ preventScroll: true });
   }));
   $('context-count').textContent = `${contextParagraphIndex + 1} / ${doc.paragraphs.length}`;
   $('context-previous').disabled = contextParagraphIndex === 0;
@@ -388,6 +414,10 @@ function setSpeed(wpm) {
 function updateRhythm(patch) {
   const next = { ...patch };
   if ('pauseOptions' in next) next.pauseOptions = normalizePauses(next.pauseOptions);
+  if ('anchorMode' in next) {
+    next.anchorMode = next.anchorMode === 'left' ? 'left' : 'center';
+    lastDrawnIndex = -1;
+  }
   savePreferences(next);
   if ('pauseOptions' in next) {
     applyPauseOptions(doc, settings.pauseOptions);

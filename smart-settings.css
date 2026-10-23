@@ -22,9 +22,9 @@
 .rhythm-field{min-width:0;padding:0;margin:0 0 23px;border:0}
 .rhythm-field legend,.rhythm-field-label{display:block;font-size:12px;font-weight:550;padding:0;margin:0 0 10px;line-height:1.5}
 .rhythm-presets,.rhythm-start{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
-.rhythm-presets button,.rhythm-start button,.rhythm-speed-presets button{min-height:44px;min-width:0;border:1px solid var(--line);border-radius:9px;padding:10px 8px;font-size:13px;background:var(--surface);color:var(--text)}
-.rhythm-presets button[aria-pressed=true],.rhythm-start button[aria-pressed=true],.rhythm-speed-presets button[aria-pressed=true]{border-color:var(--accent);color:var(--accent);background:var(--soft-accent)}
-.rhythm-presets button:hover,.rhythm-start button:hover,.rhythm-speed-presets button:hover,.rhythm-close:hover,.rhythm-trial:hover{background:var(--tint)}
+.rhythm-presets button,.rhythm-start button,.rhythm-speed-presets button,.rhythm-anchor-options button{min-height:44px;min-width:0;border:1px solid var(--line);border-radius:9px;padding:10px 8px;font-size:13px;background:var(--surface);color:var(--text)}
+.rhythm-presets button[aria-pressed=true],.rhythm-start button[aria-pressed=true],.rhythm-speed-presets button[aria-pressed=true],.rhythm-anchor-options button[aria-pressed=true]{border-color:var(--accent);color:var(--accent);background:var(--soft-accent)}
+.rhythm-presets button:hover,.rhythm-start button:hover,.rhythm-speed-presets button:hover,.rhythm-anchor-options button:hover,.rhythm-close:hover,.rhythm-trial:hover{background:var(--tint)}
 .rhythm-field-note{font-size:11px;line-height:1.7;color:var(--muted);margin:8px 0 0}
 .rhythm-field select{display:block;width:100%;min-height:44px;font-size:16px;padding:9px 12px;background:var(--surface)}
 .rhythm-details{border-top:1px solid var(--line)}
@@ -34,7 +34,14 @@
 .rhythm-details[open] summary>span{transform:rotate(45deg)}
 .rhythm-details summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
 .rhythm-details-content{padding:0 0 20px}
-.rhythm-details-content>.rhythm-field-note:first-child{margin:0 0 16px}
+.rhythm-details-content>.rhythm-field-note:first-child,.rhythm-details-content>.rhythm-pauses-note{margin:0 0 16px}
+.rhythm-anchor-field{margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.rhythm-anchor-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.rhythm-anchor-example{display:grid;grid-template-columns:minmax(0,1fr) max-content minmax(0,1fr);width:100%;max-width:300px;margin:16px auto 10px;font:32px/1.5 Georgia,"Times New Roman",serif;font-kerning:none;font-variant-ligatures:none;white-space:pre;letter-spacing:0}
+.rhythm-anchor-example>span:first-child{text-align:right;justify-self:end}
+.rhythm-anchor-example>span:nth-child(2){color:var(--accent)}
+.rhythm-anchor-example>span:last-child{text-align:left;justify-self:start}
+.rhythm-anchor-link{display:inline-flex;align-items:center;gap:6px;min-height:44px;color:var(--accent);font-size:11px;text-underline-offset:3px}
 .rhythm-range-row{padding:12px 0 3px}
 .rhythm-range-heading{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
 .rhythm-range-heading label{font-size:12px;line-height:1.6}
@@ -50,20 +57,31 @@
 .rhythm-trial{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:44px;margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--text);font-size:12px;line-height:1.6;text-align:left}
 .rhythm-status{font-size:11px;line-height:1.7;color:var(--muted);margin:0 0 12px}
 .rhythm-status:empty{display:none}
-.rhythm-footer{display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:8px 12px;padding:16px 24px 18px;border-top:1px solid var(--line);background:var(--surface);flex-shrink:0}
+.rhythm-footer{display:grid;grid-template-columns:minmax(0,1fr);align-items:center;gap:8px;padding:16px 24px 18px;border-top:1px solid var(--line);background:var(--surface);flex-shrink:0}
 .rhythm-footer button{min-height:44px;border-radius:9px;padding:10px 12px;font-size:12px}
-.rhythm-reset{border:1px solid var(--line);background:transparent;color:var(--muted)}
+.rhythm-reset-group{margin-top:8px;padding-top:18px;border-top:1px solid var(--line)}
+.rhythm-reset{min-height:44px;width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:transparent;color:var(--muted);font-size:12px}
+.rhythm-reset:hover{background:var(--tint);color:var(--text)}
 .rhythm-done{border:1px solid var(--text);background:var(--text);color:var(--surface)}
-.rhythm-footer p{grid-column:1/-1;font-size:10px;line-height:1.6;color:var(--muted);margin:0}
+.rhythm-footer p{font-size:10px;line-height:1.6;color:var(--muted);margin:0;text-align:center}
 @media(max-width:600px){
   .rhythm-summary-row{margin-top:4px}
   .reading-effective{padding:0 18px 16px;font-size:10px}
   .transport-row>.sentence-action{position:static;order:3;flex-basis:100%;width:auto;font-size:11px;justify-content:center;min-height:44px;padding:4px 8px;margin:3px 0 -6px}
-  .rhythm-dialog{margin:auto auto 0;max-height:calc(100dvh - 16px);width:100%;border-radius:18px 18px 0 0;border-bottom:0}
-  .rhythm-header{padding:20px 18px 15px}
+  .rhythm-dialog{margin:auto auto 0;max-height:min(660px,calc(100dvh - 16px));width:100%;max-width:none;border-radius:18px 18px 0 0;border-bottom:0}
+  .rhythm-header{padding:16px max(18px,env(safe-area-inset-right,0px)) 12px max(18px,env(safe-area-inset-left,0px))}
   .rhythm-header h2{font-size:27px}
-  .rhythm-body{padding:0 18px 4px}
-  .rhythm-footer{padding:14px 18px calc(14px + env(safe-area-inset-bottom,0px))}
+  .rhythm-kicker,.rhythm-description{display:none}
+  .rhythm-body{padding:0 max(18px,env(safe-area-inset-right,0px)) 4px max(18px,env(safe-area-inset-left,0px));scroll-padding-block:12px}
+  .rhythm-smart-row{margin-bottom:16px}
+  .rhythm-smart-row small{line-height:1.5}
+  .rhythm-field{margin-bottom:16px}
+  .rhythm-field legend,.rhythm-field-label{margin-bottom:8px}
+  .rhythm-field-note{margin-top:6px;line-height:1.55}
+  .rhythm-field:has(.rhythm-start)>.rhythm-field-note{display:none}
+  .rhythm-details summary{min-height:46px;padding:10px 0}
+  .rhythm-footer{padding:12px max(18px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px))}
+  .rhythm-footer .rhythm-done{min-height:48px;font-size:14px}
   .rhythm-field select,.rhythm-dialog input{font-size:16px}
 }
 @media(max-width:359px){
@@ -74,9 +92,9 @@
 }
 @media(max-height:450px) and (orientation:landscape){
   .rhythm-dialog{max-height:calc(100dvh - 16px);margin:auto}
-  .rhythm-header{padding:12px 20px 9px}
+  .rhythm-header{padding:12px max(20px,env(safe-area-inset-right,0px)) 9px max(20px,env(safe-area-inset-left,0px))}
   .rhythm-header h2{font-size:23px}
   .rhythm-kicker{display:none}
-  .rhythm-footer{padding:10px 20px;gap:5px 12px}
+  .rhythm-footer{padding:10px max(20px,env(safe-area-inset-right,0px)) max(10px,env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px));gap:5px}
   .rhythm-footer p{display:none}
 }
