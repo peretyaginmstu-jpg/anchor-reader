@@ -1,4 +1,6 @@
 /** Text segmentation and the single-timer RSVP reading engine. */
+import { DEFAULT_PAUSES, normalizePauses } from './rhythm.mjs';
+
 const graphemeSegmenter = new Intl.Segmenter('ru', { granularity: 'grapheme' });
 const meaningfulCharacter = /[\p{L}\p{N}]/u;
 const openingPunctuation = /^[\p{Ps}\p{Pi}«‹“„‘"']+$/u;
@@ -7,6 +9,11 @@ const closingPunctuation = /[\p{Pe}\p{Pf}»›”’"']+$/u;
 function speedValue(value, fallback = 300) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? Math.min(1200, Math.max(100, numeric)) : fallback;
+}
+
+function startDelayValue(value, fallback = 0) {
+  const numeric = typeof value === 'number' || (typeof value === 'string' && value.trim()) ? Number(value) : NaN;
+  return [0, 1000, 2000].includes(numeric) ? numeric : fallback;
 }
 
 function position(value, length) {
@@ -57,14 +64,33 @@ function paragraphWords(text) {
   return words;
 }
 
-function pauseFactor(text, letterCount, paragraphEnd) {
+function pauseKinds(text, letterCount, paragraphEnd) {
   const unquoted = text.replace(closingPunctuation, '');
-  return Math.max(
-    letterCount > 8 ? 1.25 : 1,
-    /[,;:]$/u.test(unquoted) ? 1.5 : 1,
-    /[.!?…]$/u.test(unquoted) ? 2 : 1,
-    paragraphEnd ? 2.5 : 1,
-  );
+  const kinds = [];
+  if (letterCount > 8) kinds.push('longWord');
+  if (/[,;:]$/u.test(unquoted)) kinds.push('punctuation');
+  if (/[.!?…]$/u.test(unquoted)) kinds.push('sentence');
+  if (paragraphEnd) kinds.push('paragraph');
+  return kinds;
+}
+
+function applyTokenPauses(tokens, pauses) {
+  for (const token of tokens) {
+    // Legacy callers may supply pre-calculated factors without tokenizer metadata.
+    if (!Array.isArray(token.pauseKinds)) continue;
+    token.factor = token.pauseKinds.reduce((factor, kind) => Math.max(factor, pauses[kind] || 1), 1);
+  }
+}
+
+/** Recalculate timing in place without re-segmenting or replacing document tokens. */
+export function applyPauseOptions(doc, input) {
+  applyTokenPauses(doc.tokens, normalizePauses(input));
+  const suffixUnits = new Array(doc.tokens.length + 1).fill(0);
+  for (let index = doc.tokens.length - 1; index >= 0; index -= 1) {
+    suffixUnits[index] = suffixUnits[index + 1] + doc.tokens[index].factor;
+  }
+  doc.suffixUnits = suffixUnits;
+  return doc;
 }
 
 /** All ranges are half-open; suffixUnits includes a terminal zero at tokens.length. */
@@ -88,7 +114,8 @@ export function tokenizeChapters(sourceChapters = []) {
           ...anchor,
           paragraphIndex,
           chapterIndex,
-          factor: pauseFactor(word, anchor.letterCount, wordIndex === words.length - 1),
+          pauseKinds: pauseKinds(word, anchor.letterCount, wordIndex === words.length - 1),
+          factor: 1,
         });
       });
       paragraphs.push({ text, start, end: tokens.length });
@@ -97,11 +124,7 @@ export function tokenizeChapters(sourceChapters = []) {
       chapters.push({ title: String(sourceChapter.title || `Глава ${chapterIndex + 1}`), start: chapterStart, end: tokens.length });
     }
   }
-  const suffixUnits = new Array(tokens.length + 1).fill(0);
-  for (let index = tokens.length - 1; index >= 0; index -= 1) {
-    suffixUnits[index] = suffixUnits[index + 1] + tokens[index].factor;
-  }
-  return { tokens, paragraphs, chapters, suffixUnits, totalWords: tokens.length };
+  return applyPauseOptions({ tokens, paragraphs, chapters, suffixUnits: [], totalWords: tokens.length }, DEFAULT_PAUSES);
 }
 
 /** Includes the current word; passing tokens.length returns zero. */
@@ -113,15 +136,19 @@ export function remainingMs(doc, index = 0, wpm = 300, smart = true) {
 }
 
 export class ReadingEngine {
-  constructor({ tokens = [], wpm = 300, smart = true, onUpdate = () => {},
+  constructor({ tokens = [], wpm = 300, smart = true, pauses = DEFAULT_PAUSES, startDelay = 0, onUpdate = () => {},
     clock = performance.now.bind(performance),
     schedule = (callback, delay) => globalThis.setTimeout(callback, delay),
     cancel = (handle) => globalThis.clearTimeout(handle) } = {}) {
     this.tokens = tokens;
     this.wpm = speedValue(wpm);
     this.smart = Boolean(smart);
+    this.pauses = normalizePauses(pauses);
+    applyTokenPauses(this.tokens, this.pauses);
+    this.startDelay = startDelayValue(startDelay);
     this.index = 0;
     this.playing = false;
+    this.preparing = false;
     this.finished = tokens.length === 0;
     this.onUpdate = onUpdate;
     this._clock = clock;
@@ -136,7 +163,7 @@ export class ReadingEngine {
   }
 
   _emit() {
-    this.onUpdate({ index: this.index, playing: this.playing, finished: this.finished });
+    this.onUpdate({ index: this.index, playing: this.playing, finished: this.finished, preparing: this.preparing });
   }
 
   _clearTimer() {
@@ -146,7 +173,7 @@ export class ReadingEngine {
   }
 
   _captureRemaining() {
-    if (this.playing && this._timer !== null && this._fullDuration > 0) {
+    if (this.playing && !this.preparing && this._timer !== null && this._fullDuration > 0) {
       this._remainingFraction = Math.max(0, Math.min(1, (this._deadline - this._clock()) / this._fullDuration));
     }
   }
@@ -175,11 +202,30 @@ export class ReadingEngine {
     }, Math.max(0, delay));
   }
 
+  _queuePreparation() {
+    this._clearTimer();
+    this.preparing = true;
+    this._remainingFraction = 1;
+    this._fullDuration = 0;
+    this._deadline = this._clock() + this.startDelay;
+    const generation = this._generation;
+    this._timer = this._schedule(() => {
+      if (generation !== this._generation || !this.playing || this._disposed) return;
+      this._timer = null;
+      this.preparing = false;
+      // Preparation does not consume any of the current word's display duration.
+      this._queue();
+      this._emit();
+    }, this.startDelay);
+  }
+
   replaceTokens(tokens, index = 0) {
     this._clearTimer();
     this.tokens = tokens || [];
+    applyTokenPauses(this.tokens, this.pauses);
     this.index = position(index, this.tokens.length);
     this.playing = false;
+    this.preparing = false;
     this.finished = this.tokens.length === 0;
     this._remainingFraction = 1;
     this._emit();
@@ -190,7 +236,7 @@ export class ReadingEngine {
     if (next === this.wpm) return;
     this._captureRemaining();
     this.wpm = next;
-    if (this.playing) this._queue();
+    if (this.playing && !this.preparing) this._queue();
     this._emit();
   }
 
@@ -199,7 +245,23 @@ export class ReadingEngine {
     if (next === this.smart) return;
     this._captureRemaining();
     this.smart = next;
-    if (this.playing) this._queue();
+    if (this.playing && !this.preparing) this._queue();
+    this._emit();
+  }
+
+  setPauseOptions(pauses) {
+    this._captureRemaining();
+    this.pauses = normalizePauses(pauses);
+    applyTokenPauses(this.tokens, this.pauses);
+    if (this.playing && !this.preparing) this._queue();
+    this._emit();
+  }
+
+  /** An in-flight preparation keeps its deadline; the new setting applies on play. */
+  setStartDelay(milliseconds) {
+    const next = startDelayValue(milliseconds, this.startDelay);
+    if (next === this.startDelay) return;
+    this.startDelay = next;
     this._emit();
   }
 
@@ -211,7 +273,8 @@ export class ReadingEngine {
       this._remainingFraction = 1;
     }
     this.playing = true;
-    this._queue();
+    if (this.startDelay > 0) this._queuePreparation();
+    else this._queue();
     this._emit();
   }
 
@@ -220,6 +283,7 @@ export class ReadingEngine {
     this._captureRemaining();
     this._clearTimer();
     this.playing = false;
+    this.preparing = false;
     this._emit();
   }
 
@@ -230,6 +294,7 @@ export class ReadingEngine {
 
   seek(index) {
     this._clearTimer();
+    this.preparing = false;
     this.index = position(index, this.tokens.length);
     this.finished = this.tokens.length === 0;
     this._remainingFraction = 1;

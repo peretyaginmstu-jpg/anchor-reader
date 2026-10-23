@@ -1,6 +1,7 @@
 import { runImporterTests } from './importers.browser.mjs';
 import { runStorageTests } from './storage.browser.mjs';
 import { runFocusTests } from './focus.browser.mjs';
+import { runRhythmTests } from './rhythm.browser.mjs';
 import * as storage from '../js/storage.mjs';
 
 const output = document.querySelector('#results');
@@ -32,6 +33,7 @@ document.querySelector('#run').addEventListener('click', async () => {
       report.failed += result.failed;
     }
     savedSettings = await storage.getSettings();
+    await storage.saveSettings({ pauseOptions: { ...storage.DEFAULT_SETTINGS.pauseOptions }, smart: true, startDelay: 0, pauseAfterParagraph: false, pauseAfterChapter: false });
     (await storage.listBooks()).forEach(book => originalIds.add(book.id));
     frame = document.createElement('iframe');
     frame.width = '1440';
@@ -91,6 +93,7 @@ document.querySelector('#run').addEventListener('click', async () => {
       });
     }
     await runFocusTests({ frame, record });
+    await runRhythmTests({ frame, record });
     await record('Keyboard works after clicking reader controls', async () => {
       input('progress', '0');
       el('next-button').click();
@@ -152,14 +155,16 @@ document.querySelector('#run').addEventListener('click', async () => {
       el('play-button').click();
     });
     await record('Optional paragraph pause stops before next paragraph', async () => {
-      el('paragraph-pause').checked = true;
-      el('paragraph-pause').dispatchEvent(new w.Event('change', { bubbles: true }));
+      el('smart-settings-button').click();
+      input('rhythm-stop', 'paragraph', 'change');
+      el('rhythm-done').click();
       input('progress', '10');
       el('play-button').click();
       await delay(250);
       assert(el('progress').value === '11' && el('play-label').textContent !== 'Пауза', 'Paragraph pause failed');
-      el('paragraph-pause').checked = false;
-      el('paragraph-pause').dispatchEvent(new w.Event('change', { bubbles: true }));
+      el('smart-settings-button').click();
+      input('rhythm-stop', 'none', 'change');
+      el('rhythm-done').click();
     });
     await record('Hotkeys do not interfere with text input', async () => {
       el('paste-button').click();
@@ -178,6 +183,13 @@ document.querySelector('#run').addEventListener('click', async () => {
       el('import-dialog').close();
     });
     let savedPosition;
+    await record('Save a custom rhythm for reload', async () => {
+      el('smart-settings-button').click();
+      input('rhythm-pause-sentence', '3.15', 'change');
+      d.querySelector('[data-start-delay="2000"]').click();
+      input('rhythm-stop', 'chapter', 'change');
+      el('rhythm-done').click();
+    });
     await record('Reload restores book, position, theme and settings', async () => {
       input('progress', '28');
       savedPosition = el('progress').value;
@@ -193,6 +205,13 @@ document.querySelector('#run').addEventListener('click', async () => {
       assert(el('speed').value === '600', 'Speed not restored');
       assert(!el('smart').checked, 'Smart pauses not restored');
       assert(d.documentElement.dataset.theme === theme, 'Theme not restored');
+      el('smart-settings-button').click();
+      assert(el('rhythm-pause-sentence').value === '3.15', 'Custom pause not restored');
+      assert(d.querySelector('[data-start-delay="2000"]').getAttribute('aria-pressed') === 'true', 'Start delay not restored');
+      assert(el('rhythm-stop').value === 'chapter', 'Chapter stop not restored');
+      d.querySelector('[data-start-delay="0"]').click();
+      input('rhythm-stop', 'none', 'change');
+      el('rhythm-done').click();
     });
     await record('Last word finishes and can restart', async () => {
       input('progress', el('progress').max);
@@ -215,6 +234,8 @@ document.querySelector('#run').addEventListener('click', async () => {
       el('smart').checked = false;
       el('smart').dispatchEvent(new w.Event('change', { bubbles: true }));
       const before = el('progress').value;
+      el('smart-settings-button').click();
+      el('rhythm-tempo').open = true;
       el('calibration-button').click();
       const calibration = d.querySelector('.calibration-dialog');
       calibration.querySelector('[data-calibration="start"]').click();
@@ -242,6 +263,29 @@ document.querySelector('#run').addEventListener('click', async () => {
       el('play-button').click();
       await delay(150);
       el('play-button').click();
+    });
+    await record('Chapter auto-stop waits before the first word of the next chapter', async () => {
+      el('smart-settings-button').click();
+      input('rhythm-stop', 'chapter', 'change');
+      el('rhythm-done').click();
+      input('chapter-select', '1', 'change');
+      const chapterStart = Number(el('progress').value);
+      input('progress', String(chapterStart - 1));
+      el('play-button').click();
+      await until(() => el('play-label').textContent !== 'Пауза', 'chapter stop');
+      assert(Number(el('progress').value) === chapterStart, 'Chapter stop skipped or stopped at the wrong word');
+      assert(el('stage-hint').textContent.includes('главы'), 'Stop reason missing');
+      await delay(180);
+      assert(Number(el('progress').value) === chapterStart, 'Stopped chapter advanced');
+      input('progress', String(chapterStart - 1));
+      el('play-button').click();
+      el('next-button').click();
+      assert(el('play-label').textContent === 'Пауза', 'Manual chapter transition was mistaken for an automatic stop');
+      el('play-button').click();
+      assert(!el('stage-hint').textContent.includes('главы'), 'Manual seek retained an obsolete stop reason');
+      el('smart-settings-button').click();
+      input('rhythm-stop', 'none', 'change');
+      el('rhythm-done').click();
     });
     const catalogue = await (await fetch('../books/manifest.json')).json();
     await record('Catalogue filters all five authors and sorts by length', async () => {

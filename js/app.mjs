@@ -1,9 +1,12 @@
-import { ReadingEngine, tokenizeChapters, remainingMs } from './reader.mjs';
+import { ReadingEngine, tokenizeChapters, remainingMs, applyPauseOptions } from './reader.mjs?v=20261023-rhythm';
 import { importBook, bookFromText } from './importers.mjs';
-import * as library from './storage.mjs';
+import * as library from './storage.mjs?v=20261023-rhythm';
 import { setupCalibration } from './calibration.mjs';
 import { selectBooks, listAuthors, bookCount } from './library-search.mjs';
-import { setupFocusReader } from './focus.mjs';
+import { setupFocusReader } from './focus.mjs?v=20261023-rhythm';
+
+import { normalizePauses } from './rhythm.mjs';
+import { setupSmartSettings } from './smart-settings.mjs?v=20261023-rhythm';
 
 const $ = (id) => document.getElementById(id);
 const demo = bookFromText(`Внимание — это маленькое путешествие. Обычно взгляд спешит по строкам, перескакивает вперёд и возвращается назад. Здесь всё устроено иначе. Слова появляются по одному, а красная буква остаётся на месте. Просто удерживайте взгляд рядом с ней.
@@ -32,7 +35,8 @@ let previousPlaying = false;
 let fitSize = 68;
 let viewMode = 'word';
 let contextParagraphIndex = 0;
-let pausedAtParagraph = false;
+let pausedAtBoundary = '';
+let smartSettings;
 let catalogue = [];
 let catalogueLoaded = false;
 let savedBooks = [];
@@ -42,17 +46,26 @@ const searchState = { query: '', author: '', sort: 'shelf' };
 const measureCanvas = document.createElement('canvas');
 const measure = measureCanvas.getContext('2d');
 const engine = new ReadingEngine({ tokens: doc.tokens, onUpdate: () => {
-  if (settings.pauseAfterParagraph && engine.playing && engine.index === lastDrawnIndex + 1 && lastDrawnIndex >= 0 && doc.tokens[lastDrawnIndex].paragraphIndex !== doc.tokens[engine.index].paragraphIndex) {
-    pausedAtParagraph = true;
-    engine.pause();
-    return;
+  if (engine.playing && !engine.preparing && engine.index === lastDrawnIndex + 1 && lastDrawnIndex >= 0) {
+    const previous = doc.tokens[lastDrawnIndex];
+    const current = doc.tokens[engine.index];
+    const boundary = settings.pauseAfterChapter && previous.chapterIndex !== current.chapterIndex ? 'chapter'
+      : settings.pauseAfterParagraph && previous.paragraphIndex !== current.paragraphIndex ? 'paragraph' : '';
+    if (boundary) { pausedAtBoundary = boundary; engine.pause(); return; }
   }
   render();
 } });
 const calibration = setupCalibration({ getWpm: () => engine.wpm, getSmart: () => engine.smart, onApply: setSpeed, pauseMain: () => engine.pause() });
+smartSettings = setupSmartSettings({
+  getSettings: () => settings,
+  onOpen: () => engine.pause(),
+  onChange: updateRhythm,
+  onCalibration: () => { smartSettings.close(); calibration.open(); },
+});
 focusReader = setupFocusReader({
-  readState: () => ({ wpm: engine.wpm, title: currentBook.title }),
+  readState: () => ({ wpm: engine.wpm, title: currentBook.title, status: engine.preparing ? 'Приготовьтесь…' : pausedAtBoundary ? `Пауза после ${pausedAtBoundary === 'chapter' ? 'главы' : 'абзаца'}` : '' }),
   onSpeedChange: setSpeed,
+  onSettings: () => smartSettings.open(),
   onEnter: () => setViewMode('word'),
   onChange: fitWord,
 });
@@ -132,10 +145,12 @@ function render() {
     lastDrawnIndex = engine.index;
     fitWord();
   }
-  $('play-label').textContent = engine.playing ? 'Пауза' : engine.finished ? 'Сначала' : engine.index > 0 ? 'Продолжить' : 'Читать';
-  $('play-button').setAttribute('aria-label', engine.playing ? 'Приостановить чтение' : engine.finished ? 'Читать сначала' : 'Начать чтение');
+  $('preparation-hint').hidden = !engine.preparing;
+  $('reader').classList.toggle('is-preparing', engine.preparing);
+  $('play-label').textContent = engine.preparing ? 'Отменить' : engine.playing ? 'Пауза' : engine.finished ? 'Сначала' : engine.index > 0 ? 'Продолжить' : 'Читать';
+  $('play-button').setAttribute('aria-label', engine.preparing ? 'Отменить начало чтения' : engine.playing ? 'Приостановить чтение' : engine.finished ? 'Читать сначала' : 'Начать чтение');
   $('play-icon').innerHTML = engine.playing ? '<path d="M7 5h3v14H7zM14 5h3v14h-3z"/>' : '<path d="m8 5 11 7-11 7Z"/>';
-  $('stage-hint').textContent = engine.finished ? 'Текст прочитан. Время для следующей истории.' : engine.playing ? 'Держите взгляд на красной букве' : pausedAtParagraph ? 'Пауза после абзаца. Продолжайте в своём темпе.' : 'Одна точка опоры для вашего взгляда';
+  $('stage-hint').textContent = engine.finished ? 'Текст прочитан. Время для следующей истории.' : engine.playing ? 'Держите взгляд на красной букве' : pausedAtBoundary ? `Пауза после ${pausedAtBoundary === 'chapter' ? 'главы' : 'абзаца'}. Продолжайте в своём темпе.` : 'Одна точка опоры для вашего взгляда';
   $('progress').value = engine.index;
   updateSlider($('progress'));
   const percent = engine.finished ? 100 : Math.floor(engine.index / doc.totalWords * 100);
@@ -148,7 +163,7 @@ function render() {
   $('rewind-button').disabled = engine.index === 0;
   $('next-button').disabled = engine.index >= doc.totalWords - 1;
   const average = engine.smart ? Math.round(engine.wpm * doc.totalWords / doc.suffixUnits[0]) : engine.wpm;
-  $('effective-speed').textContent = engine.smart ? `С учётом пауз: ~${average} слов/мин${settings.pauseAfterParagraph ? ' + ваши остановки' : ''}` : `Равномерный темп: ${engine.wpm} слов/мин`;
+  $('effective-speed').textContent = engine.smart ? `С учётом пауз: ~${average} слов/мин${settings.pauseAfterParagraph || settings.pauseAfterChapter ? ' + ваши остановки' : ''}` : `Равномерный темп: ${engine.wpm} слов/мин${settings.pauseAfterParagraph || settings.pauseAfterChapter ? ' + ваши остановки' : ''}`;
   document.querySelectorAll('[data-speed]').forEach(button => { button.classList.toggle('active', Number(button.dataset.speed) === engine.wpm); button.setAttribute('aria-pressed', String(Number(button.dataset.speed) === engine.wpm)); });
   if (viewMode === 'text') renderTextPanel();
   focusReader?.sync();
@@ -162,8 +177,8 @@ function activateBook(book, compiled = tokenizeChapters(book.chapters)) {
   const requestedPosition = book.position || 0;
   if (ready) persistPosition();
   currentBook = { ...book, position: requestedPosition };
-  doc = compiled;
-  pausedAtParagraph = false;
+  doc = applyPauseOptions(compiled, settings.pauseOptions);
+  pausedAtBoundary = '';
   setViewMode('word');
   lastDrawnIndex = -1;
   $('book-title').textContent = book.title;
@@ -313,7 +328,7 @@ function contextNodes(center, onSelect) {
 
 function renderContext() {
   $('context-paragraph').replaceChildren(...contextNodes(contextParagraphIndex, index => {
-    engine.seek(index);
+    seekWord(index);
     contextParagraphIndex = doc.tokens[index].paragraphIndex;
     renderContext();
     $('continue-button').focus();
@@ -333,7 +348,7 @@ function showContext() {
 
 function renderTextPanel() {
   const center = doc.tokens[engine.index].paragraphIndex;
-  $('reading-text').replaceChildren(...contextNodes(center, index => { engine.seek(index); }));
+  $('reading-text').replaceChildren(...contextNodes(center, index => { seekWord(index); }));
   $('text-previous').disabled = center === 0;
   $('text-next').disabled = center === doc.paragraphs.length - 1;
 }
@@ -349,8 +364,14 @@ function setViewMode(mode) {
   fitWord();
 }
 
+function seekWord(index) {
+  pausedAtBoundary = '';
+  lastDrawnIndex = -1;
+  engine.seek(index);
+}
+
 function toggleReading() {
-  pausedAtParagraph = false;
+  pausedAtBoundary = '';
   if (!engine.playing) setViewMode('word');
   engine.toggle();
 }
@@ -361,6 +382,24 @@ function setSpeed(wpm) {
   $('speed-value').textContent = engine.wpm;
   updateSlider($('speed'));
   savePreferences({ wpm: engine.wpm });
+  smartSettings?.sync();
+}
+
+function updateRhythm(patch) {
+  const next = { ...patch };
+  if ('pauseOptions' in next) next.pauseOptions = normalizePauses(next.pauseOptions);
+  savePreferences(next);
+  if ('pauseOptions' in next) {
+    applyPauseOptions(doc, settings.pauseOptions);
+    engine.setPauseOptions(settings.pauseOptions);
+  }
+  if ('smart' in next) engine.setSmart(settings.smart);
+  if ('startDelay' in next) engine.setStartDelay(settings.startDelay);
+  if ('wpm' in next) setSpeed(settings.wpm);
+  pausedAtBoundary = '';
+  $('smart').checked = engine.smart;
+  smartSettings?.sync();
+  render();
 }
 
 async function loadCatalogue() {
@@ -476,19 +515,16 @@ function applyTheme() {
 }
 
 $('play-button').addEventListener('click', toggleReading);
-$('previous-button').addEventListener('click', () => engine.seek(engine.index - 1));
-$('next-button').addEventListener('click', () => engine.seek(engine.index + 1));
-$('rewind-button').addEventListener('click', () => engine.seek(engine.index - 10));
-$('progress').addEventListener('input', () => engine.seek(Number($('progress').value)));
-$('chapter-select').addEventListener('change', () => engine.seek(doc.chapters[Number($('chapter-select').value)].start));
+$('previous-button').addEventListener('click', () => seekWord(engine.index - 1));
+$('next-button').addEventListener('click', () => seekWord(engine.index + 1));
+$('rewind-button').addEventListener('click', () => seekWord(engine.index - 10));
+$('progress').addEventListener('input', () => seekWord(Number($('progress').value)));
+$('chapter-select').addEventListener('change', () => seekWord(doc.chapters[Number($('chapter-select').value)].start));
 $('speed').addEventListener('input', () => setSpeed($('speed').value));
-document.querySelectorAll('[data-speed]').forEach(button => button.addEventListener('click', () => setSpeed(button.dataset.speed)));
-$('calibration-button').addEventListener('click', () => calibration.open());
 $('word-mode').addEventListener('click', () => setViewMode('word'));
 $('text-mode').addEventListener('click', () => setViewMode('text'));
 $('font-smaller').addEventListener('click', () => { savePreferences({ fontScale: Math.max(.7, (settings.fontScale || 1) - .1) }); fitWord(); });
 $('font-larger').addEventListener('click', () => { savePreferences({ fontScale: Math.min(1.6, (settings.fontScale || 1) + .1) }); fitWord(); });
-$('paragraph-pause').addEventListener('change', () => savePreferences({ pauseAfterParagraph: $('paragraph-pause').checked }));
 $('sentence-button').addEventListener('click', () => {
   engine.pause();
   let index = engine.index;
@@ -499,15 +535,15 @@ $('sentence-button').addEventListener('click', () => {
     const precedingParagraph = doc.tokens[index].paragraphIndex;
     while (index > 0 && doc.tokens[index - 1].paragraphIndex === precedingParagraph && !/[.!?…][»”’"')\]]*$/u.test(doc.tokens[index - 1].text)) index -= 1;
   }
-  pausedAtParagraph = false;
-  engine.seek(index);
+  pausedAtBoundary = '';
+  seekWord(index);
 });
 for (const [id, delta] of [['context-previous', -1], ['context-next', 1]]) $(id).addEventListener('click', () => { contextParagraphIndex = Math.max(0, Math.min(doc.paragraphs.length - 1, contextParagraphIndex + delta)); renderContext(); $('context-paragraph').scrollTop = 0; });
-for (const [id, delta] of [['text-previous', -1], ['text-next', 1]]) $(id).addEventListener('click', () => { const next = Math.max(0, Math.min(doc.paragraphs.length - 1, doc.tokens[engine.index].paragraphIndex + delta)); engine.seek(doc.paragraphs[next].start); $('text-mode-panel').scrollTop = 0; });
-$('smart').addEventListener('change', () => { engine.setSmart($('smart').checked); savePreferences({ smart: engine.smart }); });
+for (const [id, delta] of [['text-previous', -1], ['text-next', 1]]) $(id).addEventListener('click', () => { const next = Math.max(0, Math.min(doc.paragraphs.length - 1, doc.tokens[engine.index].paragraphIndex + delta)); seekWord(doc.paragraphs[next].start); $('text-mode-panel').scrollTop = 0; });
+$('smart').addEventListener('change', () => updateRhythm({ smart: $('smart').checked }));
 $('theme-button').addEventListener('click', () => { savePreferences({ theme: settings.theme === 'light' ? 'dark' : 'light' }); applyTheme(); });
 $('context-button').addEventListener('click', showContext);
-$('continue-button').addEventListener('click', () => { $('context-dialog').close(); pausedAtParagraph = false; setViewMode('word'); engine.play(); });
+$('continue-button').addEventListener('click', () => { $('context-dialog').close(); pausedAtBoundary = ''; setViewMode('word'); engine.play(); });
 $('help-button').addEventListener('click', () => openDialog('help-dialog'));
 $('demo-button').addEventListener('click', () => { ++importGeneration; $('help-dialog').close(); demo.position = 0; activateBook(demo); engine.play(); });
 document.querySelectorAll('.import-trigger').forEach((button) => button.addEventListener('click', () => openImport()));
@@ -540,8 +576,8 @@ document.addEventListener('keydown', (event) => {
     if (event.target.closest('button') && event.target.closest('button').id !== 'play-button') return;
     event.preventDefault(); if (!event.repeat) toggleReading();
   }
-  if (event.key === 'ArrowLeft') { event.preventDefault(); engine.seek(engine.index - 1); }
-  if (event.key === 'ArrowRight') { event.preventDefault(); engine.seek(engine.index + 1); }
+  if (event.key === 'ArrowLeft') { event.preventDefault(); seekWord(engine.index - 1); }
+  if (event.key === 'ArrowRight') { event.preventDefault(); seekWord(engine.index + 1); }
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden) { engine.pause(); persistPosition(); } });
 window.addEventListener('pagehide', () => { engine.pause(); persistPosition(); });
@@ -556,10 +592,12 @@ async function initialize() {
   applyTheme();
   engine.setSpeed(settings.wpm);
   engine.setSmart(settings.smart);
+  engine.setPauseOptions(settings.pauseOptions);
+  engine.setStartDelay(settings.startDelay);
   $('speed').value = engine.wpm;
   $('speed-value').textContent = engine.wpm;
   $('smart').checked = engine.smart;
-  $('paragraph-pause').checked = Boolean(settings.pauseAfterParagraph);
+  smartSettings.sync();
   updateSlider($('speed'));
   try { activateBook(restored || demo); }
   catch { activateBook(demo); notify('Не удалось восстановить последнюю книгу. Откройте её заново.'); }

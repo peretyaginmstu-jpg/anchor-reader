@@ -4,6 +4,7 @@ export function setupFocusReader({
   trigger = document.getElementById('fullscreen-button'),
   readState = () => ({ wpm: 300, title: '' }),
   onSpeedChange = () => {},
+  onSettings = () => {},
   onEnter = () => {},
   onChange = () => {},
   preferNative = true,
@@ -23,7 +24,7 @@ export function setupFocusReader({
   speedbar.className = 'focus-speedbar';
   speedbar.setAttribute('role', 'group');
   speedbar.setAttribute('aria-label', 'Темп чтения');
-  speedbar.innerHTML = '<button class="focus-speed-down" type="button" aria-label="Читать медленнее на 25 слов в минуту">−</button><span class="focus-speed-label"><strong class="focus-speed-value">300</strong><span>слов/мин</span></span><button class="focus-speed-up" type="button" aria-label="Читать быстрее на 25 слов в минуту">+</button>';
+  speedbar.innerHTML = '<button class="focus-speed-down" type="button" aria-label="Читать медленнее на 25 слов в минуту">−</button><button class="focus-speed-label" type="button" aria-label="Настройки умного чтения" aria-haspopup="dialog"><strong class="focus-speed-value">300</strong><span>слов/мин · настройки</span></button><button class="focus-speed-up" type="button" aria-label="Читать быстрее на 25 слов в минуту">+</button>';
   bottom.append(speedbar);
 
   const exitButton = header.querySelector('.focus-exit');
@@ -31,6 +32,7 @@ export function setupFocusReader({
   contextButton.hidden = !contextSource;
   const speedDown = speedbar.querySelector('.focus-speed-down');
   const speedUp = speedbar.querySelector('.focus-speed-up');
+  const settingsButton = speedbar.querySelector('.focus-speed-label');
   const originalTriggerLabel = trigger.getAttribute('aria-label');
   const originalTriggerTitle = trigger.getAttribute('title');
   const originalTriggerPressed = trigger.getAttribute('aria-pressed');
@@ -122,6 +124,7 @@ export function setupFocusReader({
     const state = readState() || {};
     const wpm = Math.min(1200, Math.max(100, Math.round(Number(state.wpm) || 300)));
     speedbar.querySelector('.focus-speed-value').textContent = String(wpm);
+    header.querySelector('.focus-caption').textContent = state.status || 'РЕЖИМ ЧТЕНИЯ';
     speedDown.disabled = wpm <= 100;
     speedUp.disabled = wpm >= 1200;
     header.querySelector('.focus-title').textContent = state.title || reader.querySelector('#book-title')?.textContent || 'Ваша книга';
@@ -226,6 +229,7 @@ export function setupFocusReader({
   contextButton.addEventListener('click', openContext);
   speedDown.addEventListener('click', reduceSpeed);
   speedUp.addEventListener('click', increaseSpeed);
+  settingsButton.addEventListener('click', onSettings);
   doc.addEventListener('fullscreenchange', fullscreenChanged);
   doc.addEventListener('keydown', keydown, true);
   view.addEventListener('resize', requestLayout);
@@ -244,6 +248,7 @@ export function setupFocusReader({
     contextButton.removeEventListener('click', openContext);
     speedDown.removeEventListener('click', reduceSpeed);
     speedUp.removeEventListener('click', increaseSpeed);
+    settingsButton.removeEventListener('click', onSettings);
     doc.removeEventListener('fullscreenchange', fullscreenChanged);
     doc.removeEventListener('keydown', keydown, true);
     view.removeEventListener('resize', requestLayout);

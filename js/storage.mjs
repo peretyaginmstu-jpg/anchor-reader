@@ -1,12 +1,35 @@
+import { DEFAULT_PAUSES, normalizePauses } from './rhythm.mjs';
+
 /** Local-only library. Callers may keep reading in memory if storage rejects. */
 export const DEFAULT_SETTINGS = Object.freeze({
   wpm: 300,
   smart: true,
   theme: 'light',
   lastBookId: null,
+  pauseOptions: Object.freeze({ ...DEFAULT_PAUSES }),
+  startDelay: 0,
+  pauseAfterParagraph: false,
+  pauseAfterChapter: false,
 });
 
 const SETTINGS_KEY = 'preferences';
+
+function record(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
+function normalizeSettings(value) {
+  const saved = record(value);
+  return {
+    ...DEFAULT_SETTINGS,
+    ...saved,
+    smart: typeof saved.smart === 'boolean' ? saved.smart : DEFAULT_SETTINGS.smart,
+    pauseOptions: normalizePauses(saved.pauseOptions),
+    startDelay: [0, 1000, 2000].includes(saved.startDelay) ? saved.startDelay : DEFAULT_SETTINGS.startDelay,
+    pauseAfterParagraph: typeof saved.pauseAfterParagraph === 'boolean' ? saved.pauseAfterParagraph : DEFAULT_SETTINGS.pauseAfterParagraph,
+    pauseAfterChapter: typeof saved.pauseAfterChapter === 'boolean' ? saved.pauseAfterChapter : DEFAULT_SETTINGS.pauseAfterChapter,
+  };
+}
 
 function storageError(cause) {
   if (cause?.isLibraryError) return cause;
@@ -162,7 +185,7 @@ export function createLibrary(dbName = 'anchor-reader') {
       const request = settings.get(SETTINGS_KEY);
       request.onsuccess = () => {
         if (request.result?.lastBookId === id) {
-          settings.put({ ...DEFAULT_SETTINGS, ...request.result, lastBookId: null }, SETTINGS_KEY);
+          settings.put(normalizeSettings({ ...request.result, lastBookId: null }), SETTINGS_KEY);
         }
       };
     });
@@ -171,15 +194,22 @@ export function createLibrary(dbName = 'anchor-reader') {
   async function getSettings() {
     return transact(['settings'], 'readonly', ({ settings }, done) => {
       const request = settings.get(SETTINGS_KEY);
-      request.onsuccess = () => done({ ...DEFAULT_SETTINGS, ...request.result });
+      request.onsuccess = () => done(normalizeSettings(request.result));
     });
   }
 
   async function saveSettings(partial) {
+    // Snapshot the nested patch before awaiting IndexedDB, so callers retain ownership.
+    const patch = { ...record(partial), pauseOptions: { ...record(partial?.pauseOptions) } };
     return transact(['settings'], 'readwrite', ({ settings }, done) => {
       const request = settings.get(SETTINGS_KEY);
       request.onsuccess = () => {
-        const merged = { ...DEFAULT_SETTINGS, ...request.result, ...partial };
+        const current = normalizeSettings(request.result);
+        const merged = normalizeSettings({
+          ...current,
+          ...patch,
+          pauseOptions: { ...current.pauseOptions, ...patch.pauseOptions },
+        });
         settings.put(merged, SETTINGS_KEY);
         done(merged);
       };
