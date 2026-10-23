@@ -365,7 +365,7 @@ function setSpeed(wpm) {
 
 async function loadCatalogue() {
   try {
-    const response = await fetch('./books/manifest.json');
+    const response = await fetch('./books/manifest.json?v=20261023-library');
     if (!response.ok) throw new Error('Не удалось загрузить полку классики.');
     catalogue = await response.json();
     catalogueLoaded = true;
