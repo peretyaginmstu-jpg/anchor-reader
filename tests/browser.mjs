@@ -5,6 +5,8 @@ import { runRhythmTests } from './rhythm.browser.mjs';
 import { runMobileTests } from './mobile.browser.mjs';
 import { runAnchorTests } from './anchor.browser.mjs';
 import { runComfortTests } from './comfort.browser.mjs';
+import { runAccountTests } from './account.browser.mjs';
+import { runAdminTests } from './admin.browser.mjs';
 import * as storage from '../js/storage.mjs';
 
 const output = document.querySelector('#results');
@@ -35,6 +37,8 @@ document.querySelector('#run').addEventListener('click', async () => {
       report.passed += result.passed;
       report.failed += result.failed;
     }
+    await runAccountTests({ record });
+    await runAdminTests({ record });
     savedSettings = await storage.getSettings();
     await storage.saveSettings({ pauseOptions: { ...storage.DEFAULT_SETTINGS.pauseOptions }, anchorMode: 'center', smart: true, startDelay: 0, pauseAfterParagraph: false, pauseAfterChapter: false });
     (await storage.listBooks()).forEach(book => originalIds.add(book.id));

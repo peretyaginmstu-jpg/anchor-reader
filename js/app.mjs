@@ -10,6 +10,9 @@ import { setupSmartSettings } from './smart-settings.mjs?v=20261023-mobile';
 
 import { setupMobileControls } from './mobile.mjs?v=20261023-mobile';
 import { setupComfortCalibration } from './comfort.mjs?v=20261024-fullscreen';
+import { createAccountClient } from './account-client.mjs?v=20261024-accounts';
+import { setupAccountUI } from './account-ui.mjs?v=20261024-accounts';
+import { setupAdminUI } from './admin-ui.mjs?v=20261024-accounts';
 
 const $ = (id) => document.getElementById(id);
 const demo = bookFromText(`Внимание — это маленькое путешествие. Обычно взгляд спешит по строкам, перескакивает вперёд и возвращается назад. Здесь всё устроено иначе. Слова появляются по одному, а красная буква остаётся на месте. Просто удерживайте взгляд рядом с ней.
@@ -45,6 +48,7 @@ let catalogueLoaded = false;
 let savedBooks = [];
 let authorSignature = '';
 let focusReader;
+let catalogueGeneration = 0;
 const searchState = { query: '', author: '', sort: 'shelf' };
 const measureCanvas = document.createElement('canvas');
 const measure = measureCanvas.getContext('2d');
@@ -80,6 +84,17 @@ focusReader = setupFocusReader({
   onSettings: () => smartSettings.open(),
   onEnter: () => setViewMode('word'),
   onChange: fitWord,
+});
+const accountCallback = new URL(location.href).searchParams.has('code') || /(?:^#|&)(?:error|access_token)=/u.test(location.hash);
+const accountClient = createAccountClient();
+const admin = setupAdminUI({ client: accountClient, importBook, bookFromText, notify, pauseMain: () => engine.pause(), onCatalogueChange: loadCatalogue });
+const accountUI = setupAccountUI({ client: accountClient, notify, pauseMain: () => engine.pause(), onAdmin: () => admin.open() });
+let recoveringPassword = false;
+let callbackErrorShown = false;
+accountClient.subscribe(state => {
+  if (state.recovery && !recoveringPassword) accountUI.open();
+  if (accountCallback && state.error && !state.loading && !callbackErrorShown) { callbackErrorShown = true; accountUI.open(); }
+  recoveringPassword = state.recovery;
 });
 
 function notify(message, duration = 5500) {
@@ -433,39 +448,61 @@ function updateRhythm(patch) {
 }
 
 async function loadCatalogue() {
+  const generation = ++catalogueGeneration;
   try {
     const response = await fetch('./books/manifest.json?v=20261023-library');
     if (!response.ok) throw new Error('Не удалось загрузить полку классики.');
-    catalogue = await response.json();
+    const bundled = await response.json();
+    if (generation !== catalogueGeneration) return;
+    catalogue = bundled;
     catalogueLoaded = true;
     refreshAuthors();
     renderCatalogue();
     updateSearchSummary();
   } catch (error) {
+    if (generation !== catalogueGeneration) return;
     const message = document.createElement('p'); message.className = 'catalog-loading'; message.textContent = error.message;
     const retry = document.createElement('button'); retry.className = 'text-button'; retry.textContent = 'Повторить'; retry.addEventListener('click', loadCatalogue);
     $('classics-list').replaceChildren(message, retry);
     $('search-results').textContent = 'Поиск по вашим книгам доступен. Полку классики можно загрузить повторно.';
+  }
+  if (!accountClient.getState().configured) return;
+  try {
+    const shared = await accountClient.listPublishedBooks();
+    if (generation !== catalogueGeneration) return;
+    catalogue = shared.map(book => ({
+      id: book.id, title: book.title, author: book.author, year: book.year,
+      wordCount: book.total_words, cloud: true, updatedAt: book.updated_at,
+      source: { url: book.source_url },
+    }));
+    catalogueLoaded = true;
+    $('classics-heading').textContent = 'Общая библиотека';
+    refreshAuthors(); renderCatalogue(); updateSearchSummary();
+  } catch {
+    if (generation === catalogueGeneration) notify('Общая библиотека пока недоступна. Можно читать встроенную классику и свои книги.');
   }
 }
 
 function renderCatalogue() {
     if (!catalogueLoaded) return;
     const books = selectBooks(catalogue, searchState);
-    $('classics-count').textContent = `${bookCount(catalogue.length)} · полные тексты на русском`;
+    $('classics-count').textContent = `${bookCount(catalogue.length)} · ${accountClient.getState().configured ? 'тексты для чтения' : 'полные тексты на русском'}`;
     $('classics-empty').hidden = books.length > 0;
     $('classics-list').replaceChildren(...books.map(book => {
       const card = document.createElement('article'); card.className = 'classic-card';
       const cover = document.createElement('button'); cover.className = 'classic-cover'; cover.dataset.bookId = book.id;
       cover.dataset.author = book.id.split('-')[0];
       cover.setAttribute('aria-label', `Читать «${book.title}»`);
-      for (const [className, text] of [['cover-author', book.author.replace(/ (\S+)$/u, '\n$1')], ['cover-title', book.title], ['cover-year', String(book.year)], ['cover-open', '↗']]) {
+      for (const [className, text] of [['cover-author', book.author.replace(/ (\S+)$/u, '\n$1')], ['cover-title', book.title], ['cover-year', book.year == null ? '' : String(book.year)], ['cover-open', '↗']]) {
         const span = document.createElement('span'); span.className = className; span.textContent = text; cover.append(span);
       }
       const meta = document.createElement('div'); meta.className = 'classic-meta';
       const length = document.createElement('span'); length.textContent = book.wordCount >= 10000 ? `${Math.round(book.wordCount / 1000)} тыс. слов` : `${book.wordCount.toLocaleString('ru-RU')} слов`;
-      const source = document.createElement('a'); source.textContent = 'Источник ↗'; source.href = book.source.url; source.target = '_blank'; source.rel = 'noopener';
-      meta.append(length, source); card.append(cover, meta);
+      meta.append(length);
+      if (typeof book.source?.url === 'string' && /^https:\/\//u.test(book.source.url)) {
+        const source = document.createElement('a'); source.textContent = 'Источник ↗'; source.href = book.source.url; source.target = '_blank'; source.rel = 'noopener noreferrer'; meta.append(source);
+      }
+      card.append(cover, meta);
       cover.addEventListener('click', () => openClassic(book, cover));
       return card;
     }));
@@ -517,11 +554,17 @@ async function openClassic(entry, button) {
   const title = button.querySelector('.cover-title'); title.textContent = 'Открываем…';
   try {
     let book = storageAvailable ? await library.getBook(entry.id) : null;
-    if (!book) {
-      const response = await fetch(`./books/${entry.file}`);
-      if (!response.ok) throw new Error('Книга не загрузилась. Проверьте соединение и попробуйте ещё раз.');
-      const data = await response.json();
-      book = { ...data, position: 0, createdAt: Date.now(), updatedAt: Date.now() };
+    if (!book || (entry.cloud && book.cloudUpdatedAt !== entry.updatedAt)) {
+      let data;
+      if (entry.cloud) {
+        const row = await accountClient.getPublishedBook(entry.id);
+        data = { id: row.id, title: row.title, author: row.author, chapters: row.chapters, cloudUpdatedAt: row.updated_at };
+      } else {
+        const response = await fetch(`./books/${entry.file}`);
+        if (!response.ok) throw new Error('Книга не загрузилась. Проверьте соединение и попробуйте ещё раз.');
+        data = await response.json();
+      }
+      book = { ...data, position: book?.position || 0, createdAt: book?.createdAt || Date.now(), updatedAt: Date.now() };
       if (generation !== importGeneration) return;
       const compiled = tokenizeChapters(book.chapters);
       book.totalWords = compiled.totalWords;

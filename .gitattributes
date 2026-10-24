@@ -1,0 +1,2 @@
+# Generated SDK contains significant whitespace in JavaScript template literals.
+vendor/supabase.mjs -whitespace

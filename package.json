@@ -4,6 +4,19 @@
   "private": true,
   "type": "module",
   "description": "Чтение книг по одному слову с неподвижной центральной буквой",
-  "scripts": {"test": "node --test tests/*.test.mjs", "start": "python3 -m http.server 4173 --bind 127.0.0.1"},
-  "engines": {"node": ">=22"}
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "start": "python3 -m http.server 4173 --bind 127.0.0.1",
+    "vendor:auth": "node scripts/vendor-auth.mjs",
+    "test:backend": "node backend/tests/run-postgres.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.118.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
 }

@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="ru"><meta charset="utf-8"><title>Якорь — предпросмотр аккаунтов</title>
+<style>body{margin:0;padding:16px;background:#e5e6df;font:12px system-ui;color:#535b50;display:grid;justify-content:center;gap:12px}p{margin:0;text-align:center}iframe{border:0;display:block;background:#f7f5f0;box-shadow:0 4px 24px #0001;border-radius:8px}</style>
+<p>Предпросмотр интерфейса · вымышленные данные · облачный вход не выполняется</p>
+<iframe title="Предпросмотр интерфейса Якоря" width="390" height="844" src="./accounts-fixture.html?view=signup"></iframe>
+<script type="module">
+const params=new URLSearchParams(location.search),frame=document.querySelector('iframe');
+frame.width=Math.min(1440,Math.max(320,Number(params.get('width'))||390));
+frame.height=Math.min(1000,Math.max(320,Number(params.get('height'))||844));
+frame.src=`./accounts-fixture.html?view=${params.get('view')==='admin'?'admin':'signup'}`;
+</script></html>
