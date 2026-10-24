@@ -38,19 +38,22 @@
 .comfort-footer{display:flex;flex-direction:column;gap:9px;padding:14px 24px 18px;border-top:1px solid var(--line);background:var(--surface);flex-shrink:0}
 .comfort-dialog .comfort-primary{min-height:48px;border-color:var(--text);background:var(--text);color:var(--surface);font-weight:550}
 .comfort-dialog .comfort-primary:hover{background:var(--text);opacity:.9}
-.comfort-reading-actions,.comfort-result-actions{display:grid;grid-template-columns:1fr;gap:8px}
-.comfort-secondary-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.comfort-main-actions,.comfort-reading-actions,.comfort-result-actions{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+.comfort-secondary-actions{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px}
 .comfort-dialog .comfort-secondary{color:var(--muted);background:transparent}
 #comfort-disclaimer{font-size:10px;line-height:1.6;color:var(--muted);text-align:center;margin:0}
-@media(max-width:600px){
-  .comfort-dialog{width:100%;max-height:min(660px,calc(100dvh - 12px));margin:auto auto 0;border-radius:18px 18px 0 0;border-bottom:0}
-  .comfort-dialog[data-phase=ramp],.comfort-dialog[data-phase=trial]{height:min(600px,calc(100dvh - 12px))}
-  .comfort-header{padding:14px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px))}
-  .comfort-header h2{font-size:25px}
-  .comfort-body{padding:6px max(16px,env(safe-area-inset-right,0px)) 14px max(16px,env(safe-area-inset-left,0px))}
-  .comfort-intro>p:first-child{font-size:15px}
-  .comfort-footer{padding:12px max(16px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
-}
+.comfort-dialog.comfort-fullscreen[data-phase]{position:fixed;inset:auto;left:var(--comfort-left,0px);top:var(--comfort-top,0px);width:var(--comfort-width,100vw);height:var(--comfort-height,100dvh);max-width:none;max-height:none;margin:0;border:0;border-radius:0}
+.comfort-fullscreen .comfort-header{padding:calc(20px + env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) 14px max(20px,env(safe-area-inset-left,0px))}
+.comfort-fullscreen .comfort-header h2{font-size:25px}
+.comfort-fullscreen .comfort-close{display:none}
+.comfort-fullscreen .comfort-body{padding:10px max(20px,env(safe-area-inset-right,0px)) 20px max(20px,env(safe-area-inset-left,0px))}
+.comfort-fullscreen .comfort-intro,.comfort-fullscreen .comfort-confirm,.comfort-fullscreen .comfort-result{margin-block:auto;max-width:460px;align-self:center;width:100%}
+.comfort-fullscreen .comfort-intro>p:first-child{font-size:16px}
+.comfort-fullscreen .comfort-footer{padding:14px max(16px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));gap:10px}
+.comfort-fullscreen .comfort-secondary{min-height:48px}
+.comfort-fullscreen .comfort-candidate{width:100%;max-width:320px;margin:0 auto 4px;grid-template-columns:56px minmax(80px,1fr) 56px;gap:16px}
+.comfort-fullscreen .comfort-candidate>button{height:52px}
+.comfort-fullscreen .comfort-candidate output{font-size:36px}
 @media(max-width:359px){
   .comfort-header h2{font-size:23px}
   .comfort-reading-heading{gap:10px}
@@ -68,10 +71,32 @@
   .comfort-speed strong{font-size:22px}
   .comfort-word-stage{margin-top:5px;min-height:64px}
   .comfort-footer{padding:7px max(16px,env(safe-area-inset-right,0px)) max(8px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));gap:5px}
-  .comfort-reading-actions{grid-template-columns:minmax(0,1.4fr) minmax(0,1.6fr)}
-  .comfort-result-actions{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr)}
   .comfort-dialog .comfort-secondary{min-height:48px}
   .comfort-candidate{margin-block:10px;gap:12px}
   .comfort-candidate output,.comfort-result-speed strong{font-size:30px}
   .comfort-result-speed{margin:10px 0}
 }
+@media(min-width:480px) and (max-height:450px){
+  .comfort-fullscreen .comfort-header{padding-top:max(10px,env(safe-area-inset-top,0px));padding-bottom:6px}
+  .comfort-fullscreen .comfort-header h2{font-size:23px}
+  .comfort-fullscreen .comfort-body{padding-top:4px;padding-bottom:10px}
+  .comfort-fullscreen .comfort-intro>p:first-child{font-size:14px;line-height:1.55;margin-bottom:8px}
+  .comfort-fullscreen .comfort-note{margin-top:6px}
+  .comfort-fullscreen .comfort-footer{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.4fr);gap:6px 12px;padding-top:8px;padding-bottom:max(8px,env(safe-area-inset-bottom,0px))}
+  .comfort-fullscreen #comfort-disclaimer{grid-column:1/-1}
+  .comfort-fullscreen[data-phase=confirm] .comfort-footer{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)}
+  .comfort-fullscreen[data-phase=confirm] .comfort-candidate{grid-column:1;grid-row:1/3;grid-template-columns:48px minmax(60px,1fr) 48px;gap:10px;margin:0;align-self:center}
+  .comfort-fullscreen[data-phase=confirm] .comfort-main-actions,.comfort-fullscreen[data-phase=confirm] .comfort-secondary-actions{grid-column:2}
+}
+/* Pinch zoom can make the visible area narrower than CSS media queries. */
+.comfort-fullscreen.comfort-narrow .comfort-header{padding:12px 10px 8px}
+.comfort-fullscreen.comfort-narrow .comfort-header h2{font-size:20px}
+.comfort-fullscreen.comfort-narrow .comfort-body{padding:4px 10px 10px}
+.comfort-fullscreen.comfort-narrow .comfort-footer{display:flex;padding:8px 10px max(8px,env(safe-area-inset-bottom,0px));gap:6px}
+.comfort-fullscreen.comfort-narrow button{padding-inline:6px;font-size:12px}
+.comfort-fullscreen.comfort-narrow .comfort-candidate{grid-template-columns:44px minmax(0,1fr) 44px;gap:6px}
+.comfort-fullscreen.comfort-narrow .comfort-candidate output{font-size:28px}
+.comfort-fullscreen.comfort-narrow .comfort-reading-heading{gap:6px}
+.comfort-fullscreen.comfort-narrow .comfort-speed{gap:3px}
+.comfort-fullscreen.comfort-narrow .comfort-speed strong{font-size:22px}
+.comfort-fullscreen.comfort-narrow .comfort-reading-heading>p{font-size:10px}

@@ -9,7 +9,7 @@ import { normalizePauses } from './rhythm.mjs';
 import { setupSmartSettings } from './smart-settings.mjs?v=20261023-mobile';
 
 import { setupMobileControls } from './mobile.mjs?v=20261023-mobile';
-import { setupComfortCalibration } from './comfort.mjs?v=20261023-mobile';
+import { setupComfortCalibration } from './comfort.mjs?v=20261024-fullscreen';
 
 const $ = (id) => document.getElementById(id);
 const demo = bookFromText(`Внимание — это маленькое путешествие. Обычно взгляд спешит по строкам, перескакивает вперёд и возвращается назад. Здесь всё устроено иначе. Слова появляются по одному, а красная буква остаётся на месте. Просто удерживайте взгляд рядом с ней.

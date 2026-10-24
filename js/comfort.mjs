@@ -56,16 +56,25 @@ export function setupComfortCalibration({ getAnchorMode = () => 'center', getSma
       </section>
     </div>
     <footer class="comfort-footer">
-      <button id="comfort-start" class="comfort-primary" type="button">Начать со 150</button>
-      <div id="comfort-reading-actions" class="comfort-reading-actions" hidden><button id="comfort-too-fast" class="comfort-primary" type="button">Уже быстро</button><button id="comfort-slower" class="comfort-primary" type="button" hidden>Медленнее</button><div class="comfort-secondary-actions"><button id="comfort-toggle" class="comfort-secondary" type="button" aria-pressed="false">Пауза</button><button id="comfort-dismiss" class="comfort-secondary" type="button">К книге</button></div></div>
-      <button id="comfort-check" class="comfort-primary" type="button" hidden>Проверить этот темп</button>
-      <div id="comfort-result-actions" class="comfort-result-actions" hidden><button id="comfort-apply" class="comfort-primary" type="button" disabled>Комфортно — сохранить</button><button id="comfort-adjust" class="comfort-secondary" type="button">Настроить ещё</button></div>
+      <div class="comfort-main-actions">
+        <button id="comfort-start" class="comfort-primary" type="button">Начать со 150</button>
+        <div id="comfort-reading-actions" class="comfort-reading-actions" hidden><button id="comfort-too-fast" class="comfort-primary" type="button">Уже быстро</button><button id="comfort-slower" class="comfort-primary" type="button" hidden>Медленнее</button></div>
+        <button id="comfort-check" class="comfort-primary" type="button" hidden>Проверить этот темп</button>
+        <div id="comfort-result-actions" class="comfort-result-actions" hidden><button id="comfort-apply" class="comfort-primary" type="button" disabled>Комфортно — сохранить</button></div>
+      </div>
+      <div class="comfort-secondary-actions"><button id="comfort-toggle" class="comfort-secondary" type="button" aria-pressed="false" hidden>Пауза</button><button id="comfort-adjust" class="comfort-secondary" type="button" hidden>Настроить ещё</button><button id="comfort-dismiss" class="comfort-secondary" type="button">К книге</button></div>
       <p id="comfort-disclaimer">Удобство показа, не проверка понимания.</p>
     </footer>`;
   document.body.append(dialog);
 
   const find = (name) => dialog.querySelector(`#comfort-${name}`);
   const measure = document.createElement('canvas').getContext('2d');
+  const mobileLayout = matchMedia('(max-width: 600px), (max-width: 1000px) and (max-height: 600px)');
+  const candidateControl = dialog.querySelector('.comfort-candidate');
+  const candidateHome = document.createComment('Comfort speed control on desktop');
+  candidateControl.before(candidateHome);
+  const footer = dialog.querySelector('.comfort-footer');
+  let background = null;
   let engine = null;
   let activeTokens = [];
   let phase = 'intro';
@@ -80,6 +89,7 @@ export function setupComfortCalibration({ getAnchorMode = () => 'center', getSma
   let usedFallbackTrial = false;
   let opener = null;
   let fitFrame = null;
+  let layoutFrame = null;
 
   function disposeEngine() {
     const previous = engine;
@@ -96,10 +106,13 @@ export function setupComfortCalibration({ getAnchorMode = () => 'center', getSma
     find('reading').hidden = !reading;
     find('start').hidden = next !== 'intro';
     find('reading-actions').hidden = !reading;
+    find('toggle').hidden = !reading;
     find('too-fast').hidden = next !== 'ramp';
     find('slower').hidden = next !== 'trial';
     find('check').hidden = next !== 'confirm';
     find('result-actions').hidden = next !== 'result';
+    find('adjust').hidden = next !== 'result';
+    candidateControl.hidden = next !== 'confirm';
     find('apply').disabled = next !== 'result';
     dialog.querySelector('.comfort-body').scrollTop = 0;
     if (dialog.open && focusName) find(focusName).focus({ preventScroll: true });
@@ -124,6 +137,59 @@ export function setupComfortCalibration({ getAnchorMode = () => 'center', getSma
   function requestFit() {
     if (!dialog.open || fitFrame !== null) return;
     fitFrame = requestAnimationFrame(() => { fitFrame = null; fitWord(); });
+  }
+
+  function lockBackground() {
+    // The main fullscreen reader already owns its scroll lock. Do not snapshot
+    // that temporary state: it may exit native fullscreen while this modal stays open.
+    if (background || document.querySelector('#reader.focus-mode')) return;
+    const styles = [
+      [document.documentElement, 'overflow', 'hidden'],
+      [document.documentElement, 'overscroll-behavior', 'none'],
+      [document.body, 'position', 'fixed'],
+      [document.body, 'top', `${-window.scrollY}px`],
+      [document.body, 'left', `${-window.scrollX}px`],
+      [document.body, 'width', '100%'],
+      [document.body, 'overflow', 'hidden'],
+    ];
+    background = { x: window.scrollX, y: window.scrollY, styles: styles.map(([node, property]) => [node, property, node.style.getPropertyValue(property), node.style.getPropertyPriority(property)]) };
+    for (const [node, property, value] of styles) node.style.setProperty(property, value);
+  }
+
+  function unlockBackground() {
+    if (!background) return;
+    const previous = background;
+    background = null;
+    for (const [node, property, value, priority] of previous.styles) {
+      if (value) node.style.setProperty(property, value, priority);
+      else node.style.removeProperty(property);
+    }
+    const root = document.documentElement;
+    const behavior = root.style.scrollBehavior;
+    root.style.scrollBehavior = 'auto';
+    window.scrollTo(previous.x, previous.y);
+    root.style.scrollBehavior = behavior;
+  }
+
+  function updateLayout() {
+    if (!dialog.open) return;
+    const mobile = mobileLayout.matches;
+    dialog.classList.toggle('comfort-fullscreen', mobile);
+    if (mobile) {
+      const viewport = window.visualViewport;
+      dialog.classList.toggle('comfort-narrow', (viewport?.width || innerWidth) < 280);
+      for (const [name, value] of Object.entries({ width: viewport?.width || innerWidth, height: viewport?.height || innerHeight, left: viewport?.offsetLeft || 0, top: viewport?.offsetTop || 0 })) {
+        dialog.style.setProperty(`--comfort-${name}`, `${value}px`);
+      }
+      if (candidateControl.parentElement !== footer) footer.prepend(candidateControl);
+      lockBackground();
+    } else {
+      dialog.classList.remove('comfort-narrow');
+      if (candidateControl.parentElement !== candidateHome.parentElement) candidateHome.after(candidateControl);
+      unlockBackground();
+    }
+    // Moving the controls or resizing the visible viewport never restarts reading.
+    requestFit();
   }
 
   function updateCandidate() {
@@ -223,6 +289,9 @@ export function setupComfortCalibration({ getAnchorMode = () => 'center', getSma
     disposeEngine();
     if (fitFrame !== null) cancelAnimationFrame(fitFrame);
     fitFrame = null;
+    if (layoutFrame !== null) cancelAnimationFrame(layoutFrame);
+    layoutFrame = null;
+    unlockBackground();
     restoreFocus();
   }
 
@@ -232,7 +301,7 @@ export function setupComfortCalibration({ getAnchorMode = () => 'center', getSma
   }
 
   function open() {
-    if (dialog.open) { find('close').focus(); return; }
+    if (dialog.open) { find('dismiss').focus({ preventScroll: true }); return; }
     opener = document.activeElement;
     pauseMain();
     disposeEngine();
@@ -247,6 +316,7 @@ export function setupComfortCalibration({ getAnchorMode = () => 'center', getSma
     usedFallbackTrial = false;
     showPhase('intro');
     dialog.showModal();
+    updateLayout();
     find('start').focus({ preventScroll: true });
   }
 
@@ -274,8 +344,15 @@ export function setupComfortCalibration({ getAnchorMode = () => 'center', getSma
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && dialog.open && engine?.playing) { hiddenPause = true; engine.pause(); }
   });
-  window.addEventListener('resize', requestFit);
-  window.visualViewport?.addEventListener('resize', requestFit);
+  window.addEventListener('resize', updateLayout);
+  mobileLayout.addEventListener('change', updateLayout);
+  window.visualViewport?.addEventListener('resize', updateLayout);
+  window.visualViewport?.addEventListener('scroll', updateLayout);
+  // Run after all native event listeners, including the main reader's cleanup.
+  document.addEventListener('fullscreenchange', () => {
+    if (!dialog.open || layoutFrame !== null) return;
+    layoutFrame = requestAnimationFrame(() => { layoutFrame = null; updateLayout(); });
+  });
   const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(requestFit) : null;
   observer?.observe(find('word-stage'));
   showPhase('intro');
